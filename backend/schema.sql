@@ -1,0 +1,105 @@
+-- Crear tabla usuarios
+CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    username TEXT UNIQUE NOT NULL,
+    password TEXT NOT NULL,
+    rol TEXT NOT NULL CHECK(rol IN ('admin', 'recepcionista', 'barbero'))
+);
+
+-- Crear tabla clientes
+CREATE TABLE IF NOT EXISTS clientes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    telefono TEXT,
+    email TEXT,
+    ultima_visita DATETIME,
+    fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Crear tabla servicios
+CREATE TABLE IF NOT EXISTS servicios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    precio REAL NOT NULL,
+    costo_insumos REAL DEFAULT 0,
+    imagen_url TEXT
+);
+
+-- Crear tabla inventario
+CREATE TABLE IF NOT EXISTS inventario (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL,
+    stock INTEGER NOT NULL DEFAULT 0,
+    precio_venta REAL DEFAULT 0
+);
+
+-- Crear tabla servicio_insumos
+CREATE TABLE IF NOT EXISTS servicio_insumos (
+    servicio_id INTEGER,
+    producto_id INTEGER,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id),
+    FOREIGN KEY (producto_id) REFERENCES inventario(id),
+    PRIMARY KEY (servicio_id, producto_id)
+);
+
+-- Crear tabla cajas (Turnos)
+CREATE TABLE IF NOT EXISTS cajas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    recepcionista_id INTEGER,
+    monto_inicial REAL NOT NULL,
+    monto_final_declarado REAL,
+    monto_esperado REAL,
+    fecha_apertura DATETIME DEFAULT CURRENT_TIMESTAMP,
+    fecha_cierre DATETIME,
+    estado TEXT DEFAULT 'abierta' CHECK(estado IN ('abierta', 'cerrada')),
+    FOREIGN KEY (recepcionista_id) REFERENCES usuarios(id)
+);
+
+-- Crear tabla ventas (Tickets)
+CREATE TABLE IF NOT EXISTS ventas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    barbero_id INTEGER,
+    caja_id INTEGER,
+    metodo TEXT NOT NULL CHECK(metodo IN ('Efectivo', 'Tarjeta', 'Transferencia')),
+    total REAL NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id),
+    FOREIGN KEY (barbero_id) REFERENCES usuarios(id),
+    FOREIGN KEY (caja_id) REFERENCES cajas(id)
+);
+
+-- Crear tabla gastos_chicos
+CREATE TABLE IF NOT EXISTS gastos_chicos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    caja_id INTEGER,
+    descripcion TEXT NOT NULL,
+    monto REAL NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (caja_id) REFERENCES cajas(id)
+);
+
+-- Crear tabla clientes_galeria
+CREATE TABLE IF NOT EXISTS clientes_galeria (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_id INTEGER,
+    foto_url TEXT NOT NULL,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cliente_id) REFERENCES clientes(id)
+);
+
+-- Crear tabla auditoria_log
+CREATE TABLE IF NOT EXISTS auditoria_log (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    usuario_id INTEGER,
+    accion TEXT NOT NULL,
+    detalles TEXT,
+    fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+
+-- Insertar datos por defecto (Admin)
+INSERT OR IGNORE INTO usuarios (id, nombre, username, password, rol) 
+VALUES (1, 'Administrador', 'admin', 'admin123', 'admin');
