@@ -1,4 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+import { Plus, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import FormDialog from './FormDialog';
+import ConfirmDialog from './ConfirmDialog';
+import EmptyState from './EmptyState';
+import LoadingSkeleton from './LoadingSkeleton';
+import PageTransition from './PageTransition';
 
 export default function RecepcionistaServicios() {
   const [servicios, setServicios] = useState([]);
@@ -6,6 +13,9 @@ export default function RecepcionistaServicios() {
   const [formData, setFormData] = useState({ id: null, nombre: '', precio: '', costo_insumos: '' });
   const [imagen, setImagen] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState(null);
+  const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
 
   useEffect(() => {
@@ -27,63 +37,76 @@ export default function RecepcionistaServicios() {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este servicio/paquete?')) return;
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
     try {
       const token = localStorage.getItem('token');
-      const res = await fetch(`http://localhost:3000/api/servicios/${id}`, {
+      const res = await fetch(`http://localhost:3000/api/servicios/${deleteTarget}`, {
         method: 'DELETE',
         headers: { 'Authorization': `Bearer ${token}` }
       });
       if (res.ok) {
-        setServicios(servicios.filter(s => s.id !== id));
+        setServicios(servicios.filter(s => s.id !== deleteTarget));
       } else {
         alert('Error al eliminar');
       }
     } catch (error) {
       console.error(error);
+    } finally {
+      setDeleteTarget(null);
     }
   };
 
   const handleEdit = (srv) => {
-    setFormData({ id: srv.id, nombre: srv.nombre, precio: srv.precio, costo_insumos: srv.costo_insumos });
-    setImagen(null); // Force upload new if wanted
+    setFormData({ id: srv.id, nombre: srv.nombre, precio: srv.precio, costo_insumos: srv.costo_insumos || '' });
+    setImagen(null);
+    setPreviewUrl(null);
     setIsEditing(true);
+    setIsModalOpen(true);
+  };
+
+  const handleCreateNew = () => {
+    setFormData({ id: null, nombre: '', precio: '', costo_insumos: '' });
+    setImagen(null);
+    setPreviewUrl(null);
+    setIsEditing(false);
+    setIsModalOpen(true);
   };
 
   const handleCancel = () => {
+    setIsModalOpen(false);
     setIsEditing(false);
     setFormData({ id: null, nombre: '', precio: '', costo_insumos: '' });
     setImagen(null);
-    if(fileInputRef.current) fileInputRef.current.value = "";
+    setPreviewUrl(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  };
+
+  const handleImageChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setImagen(file);
+      setPreviewUrl(URL.createObjectURL(file));
+    }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
     const data = new FormData();
     data.append('nombre', formData.nombre);
     data.append('precio', formData.precio);
     data.append('costo_insumos', formData.costo_insumos || 0);
-    if (imagen) {
-      data.append('imagen', imagen);
-    }
+    if (imagen) data.append('imagen', imagen);
 
     try {
       const token = localStorage.getItem('token');
-      const url = isEditing 
-        ? `http://localhost:3000/api/servicios/${formData.id}` 
-        : 'http://localhost:3000/api/servicios';
+      const url = isEditing ? `http://localhost:3000/api/servicios/${formData.id}` : 'http://localhost:3000/api/servicios';
       const method = isEditing ? 'PUT' : 'POST';
-
       const res = await fetch(url, {
         method,
-        headers: { 
-          'Authorization': `Bearer ${token}`
-        },
-        body: data // FormData handles Content-Type automatically
+        headers: { 'Authorization': `Bearer ${token}` },
+        body: data
       });
-
       if (res.ok) {
         fetchServicios();
         handleCancel();
@@ -97,88 +120,178 @@ export default function RecepcionistaServicios() {
   };
 
   return (
-    <div className="animated-item">
-      <h2 style={{ marginBottom: '2rem' }}>Gestión de Paquetes y Cortes</h2>
+    <PageTransition>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem', flexWrap: 'wrap', gap: '1rem' }}>
+        <div>
+          <h2 style={{ margin: 0, fontSize: '1.5rem' }}>Paquetes y Servicios</h2>
+          <p style={{ color: 'var(--text-muted)', margin: '0.25rem 0 0', fontSize: '0.9rem' }}>
+            {servicios.length} servicio{servicios.length !== 1 ? 's' : ''} en catálogo
+          </p>
+        </div>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={handleCreateNew}
+          style={{
+            padding: '0.65rem 1.25rem', borderRadius: '999px', border: 'none',
+            background: 'linear-gradient(135deg, #6f4e37, #8a6344)',
+            color: '#fff', fontWeight: 600, fontSize: '0.9rem',
+            cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '0.5rem',
+            boxShadow: '0 4px 14px rgba(111,78,55,0.3)',
+          }}
+        >
+          <Plus size={18} />
+          Nuevo Servicio
+        </motion.button>
+      </div>
 
-      <div className="bento-grid" style={{ marginTop: '2rem' }}>
-        <div className="bento-card bento-col-4 animated-item">
-          <h3>{isEditing ? 'Editar Paquete' : 'Nuevo Paquete / Servicio'}</h3>
-          <form onSubmit={handleSubmit}>
-            <div className="form-group">
-              <label>Nombre del Servicio</label>
-              <input 
-                required 
-                className="form-control" 
-                value={formData.nombre} 
-                onChange={(e) => setFormData({...formData, nombre: e.target.value})} 
-                placeholder="Ej. Corte y Barba VIP"
-              />
-            </div>
-            <div className="form-group">
-              <label>Precio de Venta ($)</label>
-              <input 
-                required 
-                type="number"
-                step="0.01"
-                className="form-control" 
-                value={formData.precio} 
-                onChange={(e) => setFormData({...formData, precio: e.target.value})} 
-              />
-            </div>
-            <div className="form-group">
-              <label>Imagen Representativa</label>
-              <input 
-                type="file" 
-                accept="image/*"
-                className="form-control" 
-                ref={fileInputRef}
-                onChange={(e) => setImagen(e.target.files[0])} 
-              />
-            </div>
-            <button type="submit" className="btn btn-primary" style={{width: '100%', marginTop: '1rem'}}>
+      {loading ? (
+        <LoadingSkeleton count={6} />
+      ) : servicios.length === 0 ? (
+        <div className="bento-card">
+          <EmptyState message="No hay servicios registrados." action={
+            <button onClick={handleCreateNew} style={{ padding: '0.6rem 1.2rem', borderRadius: '999px', border: 'none', background: 'var(--accent-primary)', color: '#fff', fontWeight: 600, cursor: 'pointer' }}>
+              Crear Primer Servicio
+            </button>
+          } />
+        </div>
+      ) : (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '1rem' }}>
+          {servicios.map((s, idx) => (
+            <motion.div
+              key={s.id}
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.04 }}
+              style={{
+                background: 'var(--surface-color)', border: '1px solid var(--border-color)',
+                borderRadius: '1.25rem', overflow: 'hidden',
+                boxShadow: 'var(--shadow-soft)',
+                transition: 'all 0.2s',
+              }}
+              onMouseEnter={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-hover)'; e.currentTarget.style.borderColor = 'var(--accent-primary)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.boxShadow = 'var(--shadow-soft)'; e.currentTarget.style.borderColor = 'var(--border-color)'; }}
+            >
+              <div style={{ height: '160px', width: '100%', background: '#f3f0ec', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', overflow: 'hidden' }}>
+                {s.imagen_url ? (
+                  <img src={`http://localhost:3000${s.imagen_url}`} alt={s.nombre}
+                    style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                  />
+                ) : (
+                  <ImageIcon size={40} style={{ color: 'var(--text-muted)', opacity: 0.4 }} />
+                )}
+                <div style={{
+                  position: 'absolute', bottom: 0, left: 0, right: 0,
+                  background: 'linear-gradient(transparent, rgba(0,0,0,0.3))',
+                  padding: '2rem 0.75rem 0.75rem',
+                }}>
+                  <span style={{
+                    display: 'inline-block', padding: '0.2rem 0.6rem', borderRadius: '6px',
+                    background: 'rgba(255,255,255,0.9)', color: '#6f4e37',
+                    fontSize: '0.85rem', fontWeight: 700,
+                  }}>
+                    ${s.precio}
+                  </span>
+                </div>
+              </div>
+              <div style={{ padding: '1rem' }}>
+                <h4 style={{ margin: '0 0 0.25rem', fontSize: '1rem', fontWeight: 600 }}>{s.nombre}</h4>
+                <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.75rem' }}>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => handleEdit(s)}
+                    style={{
+                      flex: 1, padding: '0.45rem', borderRadius: '8px', border: '1px solid var(--border-color)',
+                      background: 'var(--surface-color)', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8rem',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6f4e37'; e.currentTarget.style.color = '#6f4e37'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-muted)'; }}
+                  >
+                    <Pencil size={14} /> Editar
+                  </motion.button>
+                  <motion.button
+                    whileHover={{ scale: 1.03 }}
+                    whileTap={{ scale: 0.97 }}
+                    onClick={() => setDeleteTarget(s.id)}
+                    style={{
+                      flex: 1, padding: '0.45rem', borderRadius: '8px', border: '1px solid var(--border-color)',
+                      background: 'var(--surface-color)', color: 'var(--text-muted)', fontWeight: 500, fontSize: '0.8rem',
+                      cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                      transition: 'all 0.2s',
+                    }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#dc2626'; e.currentTarget.style.color = '#dc2626'; e.currentTarget.style.background = 'rgba(220,38,38,0.1)'; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.color = 'var(--text-muted)'; e.currentTarget.style.background = 'var(--surface-color)'; }}
+                  >
+                    <Trash2 size={14} /> Borrar
+                  </motion.button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+      )}
+
+      <FormDialog
+        isOpen={isModalOpen}
+        onClose={handleCancel}
+        title={isEditing ? 'Editar Servicio' : 'Nuevo Servicio'}
+      >
+        <form onSubmit={handleSubmit} style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>Nombre del Servicio</label>
+            <input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+              placeholder="Ej. Corte y Barba VIP"
+              style={{ width: '100%', padding: '0.7rem 1rem', fontSize: '0.95rem', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-color)', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
+              onFocus={(e) => { e.target.style.borderColor = '#6f4e37'; e.target.style.boxShadow = '0 0 0 3px rgba(111,78,55,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.boxShadow = 'none'; }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>Precio de Venta ($)</label>
+            <input required type="number" step="0.01" value={formData.precio} onChange={(e) => setFormData({ ...formData, precio: e.target.value })}
+              style={{ width: '100%', padding: '0.7rem 1rem', fontSize: '0.95rem', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-color)', outline: 'none', boxSizing: 'border-box', transition: 'border-color 0.2s' }}
+              onFocus={(e) => { e.target.style.borderColor = '#6f4e37'; e.target.style.boxShadow = '0 0 0 3px rgba(111,78,55,0.1)'; }}
+              onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.boxShadow = 'none'; }}
+            />
+          </div>
+          <div>
+            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>Imagen Representativa</label>
+            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange}
+              style={{ width: '100%', padding: '0.6rem', fontSize: '0.9rem', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-color)', boxSizing: 'border-box' }}
+            />
+            {previewUrl && (
+              <div style={{ marginTop: '0.5rem', borderRadius: '8px', overflow: 'hidden', width: '120px', height: '80px' }}>
+                <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              </div>
+            )}
+          </div>
+          <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
+            <button type="button" onClick={handleCancel}
+              style={{ padding: '0.65rem 1.25rem', borderRadius: '999px', border: '1px solid var(--border-color)', background: 'transparent', color: 'var(--text-muted)', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer' }}
+            >
+              Cancelar
+            </button>
+            <button type="submit"
+              style={{ padding: '0.65rem 1.25rem', borderRadius: '999px', border: 'none', background: 'linear-gradient(135deg, #6f4e37, #8a6344)', color: '#fff', fontWeight: 600, fontSize: '0.9rem', cursor: 'pointer', boxShadow: '0 4px 12px rgba(111,78,55,0.3)' }}
+            >
               {isEditing ? 'Guardar Cambios' : 'Crear Servicio'}
             </button>
-            {isEditing && (
-              <button 
-                type="button" 
-                className="btn btn-secondary" 
-                style={{width: '100%', marginTop: '0.5rem'}} 
-                onClick={handleCancel}
-              >
-                Cancelar
-              </button>
-            )}
-          </form>
-        </div>
+          </div>
+        </form>
+      </FormDialog>
 
-        <div className="bento-card bento-col-8 animated-item">
-          <h3>Catálogo Actual</h3>
-          {loading ? <p>Cargando...</p> : (
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(180px, 1fr))', gap: '1rem' }}>
-              {servicios.map((s, idx) => (
-                <div key={s.id} className="animated-item" style={{ animationDelay: `${idx * 0.1}s`, border: '1px solid var(--border-color)', borderRadius: 'var(--radius)', overflow: 'hidden', backgroundColor: 'var(--surface-color)' }}>
-                  <div style={{ height: '120px', width: '100%', backgroundColor: '#eaeaea', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {s.imagen_url ? (
-                      <img src={`http://localhost:3000${s.imagen_url}`} alt={s.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                    ) : (
-                      <span style={{ color: 'var(--text-muted)' }}>Sin Imagen</span>
-                    )}
-                  </div>
-                  <div style={{ padding: '1rem' }}>
-                    <h4 style={{ fontSize: '1rem', marginBottom: '0.5rem' }}>{s.nombre}</h4>
-                    <p style={{ color: 'var(--accent-primary)', fontWeight: 'bold', marginBottom: '1rem' }}>${s.precio}</p>
-                    <div style={{ display: 'flex', gap: '0.5rem' }}>
-                      <button className="btn btn-secondary" style={{ flex: 1, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleEdit(s)}>Editar</button>
-                      <button className="btn btn-danger" style={{ flex: 1, padding: '0.4rem', fontSize: '0.8rem' }} onClick={() => handleDelete(s.id)}>Borrar</button>
-                    </div>
-                  </div>
-                </div>
-              ))}
-              {servicios.length === 0 && <p style={{color: 'var(--text-muted)'}}>No hay servicios registrados.</p>}
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      <ConfirmDialog
+        isOpen={deleteTarget !== null}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={handleDelete}
+        title="¿Eliminar servicio?"
+        message="Esta acción no se puede deshacer. El servicio será eliminado permanentemente del catálogo."
+        confirmText="Eliminar"
+        destructive={true}
+      />
+    </PageTransition>
   );
 }

@@ -4,6 +4,7 @@ CREATE TABLE IF NOT EXISTS usuarios (
     nombre TEXT NOT NULL,
     username TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
+    telefono TEXT DEFAULT '',
     rol TEXT NOT NULL CHECK(rol IN ('admin', 'recepcionista', 'barbero'))
 );
 
@@ -22,6 +23,7 @@ CREATE TABLE IF NOT EXISTS servicios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     precio REAL NOT NULL,
+    duracion_minutos INTEGER DEFAULT 30,
     costo_insumos REAL DEFAULT 0,
     imagen_url TEXT
 );
@@ -98,6 +100,24 @@ CREATE TABLE IF NOT EXISTS auditoria_log (
     detalles TEXT,
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
+);
+
+-- Crear tabla citas
+CREATE TABLE IF NOT EXISTS citas (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    cliente_nombre TEXT NOT NULL,
+    barbero_id INTEGER NOT NULL,
+    servicio_id INTEGER NOT NULL,
+    fecha DATE NOT NULL,
+    hora TIME NOT NULL,
+    estado TEXT DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'en_turno', 'completada', 'cancelada')),
+    venta_id INTEGER,
+    creado_por INTEGER,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (barbero_id) REFERENCES usuarios(id),
+    FOREIGN KEY (servicio_id) REFERENCES servicios(id),
+    FOREIGN KEY (venta_id) REFERENCES ventas(id),
+    FOREIGN KEY (creado_por) REFERENCES usuarios(id)
 );
 
 -- Insertar datos por defecto (Admin)

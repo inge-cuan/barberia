@@ -9,7 +9,7 @@ router.get('/catalogos', requireAuth, (req, res) => {
     try {
         const clientes = db.prepare('SELECT id, nombre FROM clientes').all();
         const servicios = db.prepare('SELECT id, nombre, precio, imagen_url FROM servicios').all();
-        const barberos = db.prepare("SELECT id, nombre FROM usuarios WHERE rol IN ('barbero', 'admin')").all();
+        const barberos = db.prepare("SELECT id, nombre FROM usuarios WHERE rol = 'barbero'").all();
 
         res.json({ clientes, servicios, barberos });
     } catch (error) {
@@ -94,6 +94,21 @@ router.delete('/:id', requireAuth, (req, res) => {
 
         logAudit(req.user.id, 'Cancelación de Venta', `Venta ID: ${id} cancelada. Motivo: ${motivo}. Total: $${venta.total}`);
         res.json({ mensaje: 'Venta cancelada exitosamente' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Actualizar método de pago de una venta
+router.put('/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    const { metodo } = req.body;
+    if (!metodo || !['Efectivo', 'Tarjeta', 'Transferencia'].includes(metodo)) {
+        return res.status(400).json({ error: 'Método de pago inválido' });
+    }
+    try {
+        db.prepare('UPDATE ventas SET metodo = ? WHERE id = ?').run(metodo, id);
+        res.json({ mensaje: 'Método de pago actualizado' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

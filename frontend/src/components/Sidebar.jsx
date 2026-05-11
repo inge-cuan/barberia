@@ -1,10 +1,25 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Menu, X } from "lucide-react";
+import { Scissors, LayoutDashboard, Users, History, DollarSign, CalendarPlus, CalendarCheck, LogOut, PanelLeftClose, PanelLeftOpen, Sun, Moon, UserCog, CreditCard } from "lucide-react";
+import { useTheme } from "../contexts/ThemeContext";
 
-export default function Sidebar({ user, isOpen, setIsOpen }) {
+const getLinks = (role) => [
+  ...(role === 'admin' ? [{ to: "/dashboard/admin", label: "Dashboard", icon: LayoutDashboard }] : []),
+  ...(role === 'admin' ? [{ to: "/dashboard/usuarios", label: "Usuarios", icon: Users }] : []),
+  ...(role === 'recepcionista' ? [{ to: "/dashboard/usuarios", label: "Barberos", icon: UserCog }] : []),
+  { to: "/dashboard/registrar-cita", label: "Registrar Cita", icon: CalendarPlus },
+  { to: "/dashboard/gestion-citas", label: "Gestión Citas", icon: CalendarCheck },
+  { to: "/dashboard/servicios", label: "Servicios", icon: Scissors },
+  { to: "/dashboard/corte", label: "Corte de Caja", icon: DollarSign },
+  ...(role === 'recepcionista' ? [{ to: "/dashboard/caja", label: "Caja", icon: CreditCard }] : []),
+  ...(role === 'admin' ? [{ to: "/dashboard/historial-caja", label: "Historial Caja", icon: History }] : []),
+];
+
+export default function Sidebar({ user, isOpen, setIsOpen, collapsed, setCollapsed }) {
   const location = useLocation();
   const navigate = useNavigate();
-  const role = user?.rol || "cajero";
+  const { theme, toggleTheme } = useTheme();
+  const role = user?.rol || "recepcionista";
+  const links = getLinks(role);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -15,106 +30,80 @@ export default function Sidebar({ user, isOpen, setIsOpen }) {
   return (
     <>
       {isOpen && (
-        <div
-          className="sidebar-overlay"
-          onClick={() => setIsOpen(false)}
-          role="presentation"
-        />
+        <div className="sidebar-overlay" onClick={() => setIsOpen(false)} role="presentation" />
       )}
 
-      <button className="hamburger-btn" onClick={() => setIsOpen(!isOpen)}>
-        {isOpen ? <X size={32} /> : <Menu size={32} />}
+      <button
+        className="hamburger-btn"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-label={isOpen ? "Cerrar menú" : "Abrir menú"}
+      >
+        {isOpen ? <PanelLeftClose size={28} /> : <PanelLeftOpen size={28} />}
       </button>
 
-      <aside className={`sidebar ${isOpen ? "open" : ""}`}>
-        <div className="sidebar-logo">BARBER POS</div>
+      <aside className={`sidebar ${isOpen ? "open" : ""} ${collapsed ? "collapsed" : ""}`}
+        onMouseEnter={() => { if (window.innerWidth > 768) return; }}
+      >
+        <div className="sidebar-header" onClick={() => setCollapsed(!collapsed)} style={{ cursor: 'pointer' }} title={collapsed ? "Expandir sidebar" : "Colapsar sidebar"}>
+          <div className="sidebar-logo-icon">
+            <Scissors size={18} color="#fff" />
+          </div>
+          <span className="sidebar-logo-text">BarberPOS</span>
+        </div>
 
-        <nav onClick={() => window.innerWidth <= 768 && setIsOpen(false)}>
-          {/* Servicios - Available to all */}
-          <Link
-            to="/dashboard/servicios"
-            className={`nav-link ${location.pathname === "/dashboard/servicios" ? "active" : ""}`}
-          >
-            Servicios
-          </Link>
-
-          {/* Citas - Available to all */}
-          <Link
-            to="/dashboard/citas"
-            className={`nav-link ${location.pathname === "/dashboard/citas" ? "active" : ""}`}
-          >
-            Citas
-          </Link>
-
-          {role === "admin" && (
-            <>
+        <nav onClick={() => { if (window.innerWidth <= 768) setIsOpen(false); }}>
+          {links.map((l) => {
+            const isActive = location.pathname === l.to;
+            const Icon = l.icon;
+            return (
               <Link
-                to="/dashboard/admin"
-                className={`nav-link ${location.pathname === "/dashboard/admin" ? "active" : ""}`}
+                key={l.to}
+                to={l.to}
+                className={`nav-link ${isActive ? "active" : ""}`}
+                title={collapsed ? l.label : undefined}
               >
-                Dashboard
+                <Icon size={18} />
+                <span>{l.label}</span>
               </Link>
-              <Link
-                to="/dashboard/usuarios"
-                className={`nav-link ${location.pathname === "/dashboard/usuarios" ? "active" : ""}`}
-              >
-                Usuarios
-              </Link>
-            </>
-          )}
-
-          {(role === "recepcionista" ||
-            role === "admin" ||
-            role === "cajero") && (
-            <>
-              <Link
-                to="/dashboard/caja"
-                className={`nav-link ${location.pathname === "/dashboard/caja" ? "active" : ""}`}
-              >
-                Punto de Venta
-              </Link>
-              <Link
-                to="/dashboard/corte"
-                className={`nav-link ${location.pathname === "/dashboard/corte" ? "active" : ""}`}
-              >
-                Corte de Caja
-              </Link>
-            </>
-          )}
-
-          {role === "admin" && (
-            <Link
-              to="/dashboard/historial-caja"
-              className={`nav-link ${location.pathname === "/dashboard/historial-caja" ? "active" : ""}`}
-            >
-              Historial Caja
-            </Link>
-          )}
+            );
+          })}
         </nav>
 
         <div className="sidebar-footer">
-          <div
-            style={{
-              marginBottom: "1rem",
-              fontWeight: "bold",
-              color: "#d0c5af",
-            }}
-          >
-            USER: {user?.username}
+          <div style={{ display: "flex", alignItems: "center", gap: "0.6rem", marginBottom: "0.75rem" }}>
+            <div style={{
+              width: "32px", height: "32px", borderRadius: "50%",
+              background: "linear-gradient(135deg, #6f4e37, #8a6344)",
+              display: "flex", alignItems: "center", justifyContent: "center",
+              color: "#fff", fontSize: "0.75rem", fontWeight: 700, flexShrink: 0,
+            }}>
+              {user?.nombre?.charAt(0)?.toUpperCase() || user?.username?.charAt(0)?.toUpperCase() || "U"}
+            </div>
+            {!collapsed && (
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="sidebar-user-name" style={{ fontSize: "0.85rem", fontWeight: 600, color: "var(--on-surface)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                  {user?.nombre || user?.username}
+                </div>
+                <div className="sidebar-user-role" style={{ fontSize: "0.7rem", color: "var(--text-muted)", textTransform: "capitalize" }}>{role}</div>
+              </div>
+            )}
           </div>
-          <button
-            onClick={handleLogout}
-            className="btn btn-primary"
-            style={{
-              width: "100%",
-              backgroundColor: "#6f4e37",
-              color: "#ffffff",
-              border: "none",
-              fontWeight: 600,
-            }}
-          >
-            CERRAR SESIÓN
-          </button>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}>
+            <button onClick={toggleTheme} title={theme === 'dark' ? 'Modo claro' : 'Modo oscuro'} style={{ position: 'relative' }}>
+              {theme === 'dark' ? <Sun size={16} /> : <Moon size={16} />}
+              {!collapsed && <span>{theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}</span>}
+              <span style={{
+                position: 'absolute', top: '-4px', right: '-4px',
+                width: '8px', height: '8px', borderRadius: '50%',
+                background: 'var(--accent-primary)',
+                border: '2px solid var(--surface-color)',
+              }} />
+            </button>
+            <button onClick={handleLogout} title="Cerrar sesión">
+              <LogOut size={16} />
+              {!collapsed && <span>Cerrar Sesión</span>}
+            </button>
+          </div>
         </div>
       </aside>
     </>

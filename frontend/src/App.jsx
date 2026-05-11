@@ -1,4 +1,7 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useState } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
+import { Toaster } from 'sonner';
 import Login from './components/Login';
 import Layout from './components/Layout';
 import AdminDashboard from './components/AdminDashboard';
@@ -7,29 +10,53 @@ import AdminUsuarios from './components/AdminUsuarios';
 import AdminCorteHistorial from './components/AdminCorteHistorial';
 import CajeroCorte from './components/CajeroCorte';
 import RecepcionistaServicios from './components/RecepcionistaServicios';
+import RegistrarCita from './components/RegistrarCita';
+import GestionCitas from './components/GestionCitas';
 
-function App() {
+function AnimatedRoutes({ sidebarCollapsed, setSidebarCollapsed }) {
+  const location = useLocation();
   return (
-    <BrowserRouter>
-      <Routes>
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
         <Route path="/login" element={<Login />} />
-        
-        <Route path="/dashboard" element={<Layout />}>
+        <Route path="/dashboard" element={<Layout collapsed={sidebarCollapsed} setCollapsed={setSidebarCollapsed} />}>
           <Route index element={<Navigate to="admin" replace />} />
-          
-          {/* Rutas Admin */}
           <Route path="admin" element={<AdminDashboard />} />
           <Route path="usuarios" element={<AdminUsuarios />} />
           <Route path="historial-caja" element={<AdminCorteHistorial />} />
-          
-          {/* Rutas Cajero/Recepcionista/POS */}
           <Route path="caja" element={<PosDashboard />} />
           <Route path="corte" element={<CajeroCorte />} />
           <Route path="servicios" element={<RecepcionistaServicios />} />
+          <Route path="registrar-cita" element={<RegistrarCita />} />
+          <Route path="gestion-citas" element={<GestionCitas />} />
         </Route>
-
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>
+    </AnimatePresence>
+  );
+}
+
+function App() {
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(() => {
+    return localStorage.getItem('sidebarCollapsed') === 'true';
+  });
+
+  const handleSetCollapsed = (val) => {
+    setSidebarCollapsed(val);
+    localStorage.setItem('sidebarCollapsed', val);
+  };
+
+  return (
+    <BrowserRouter>
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        toastOptions={{
+          style: { borderRadius: '12px', padding: '12px 16px', fontSize: '0.9rem' },
+        }}
+      />
+      <AnimatedRoutes sidebarCollapsed={sidebarCollapsed} setSidebarCollapsed={handleSetCollapsed} />
     </BrowserRouter>
   );
 }

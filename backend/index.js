@@ -19,6 +19,7 @@ const ventasRoutes = require('./routes/ventas');
 const marketingRoutes = require('./routes/marketing');
 const adminRoutes = require('./routes/admin');
 const serviciosRoutes = require('./routes/servicios');
+const citasRoutes = require('./routes/citas');
 
 // Rutas base
 app.use('/api/auth', authRoutes);
@@ -27,6 +28,7 @@ app.use('/api/ventas', ventasRoutes);
 app.use('/api/marketing', marketingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/servicios', serviciosRoutes);
+app.use('/api/citas', citasRoutes);
 
 // Endpoint básico de health-check
 app.get('/', (req, res) => {

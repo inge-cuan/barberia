@@ -65,55 +65,124 @@ router.get('/auditoria', requireAuth, requireAdmin, (req, res) => {
     }
 });
 
-// CRUD de Usuarios
-router.get('/usuarios', requireAuth, requireAdmin, (req, res) => {
+// CRUD de Usuarios (con soporte multi-rol)
+router.get('/usuarios', requireAuth, (req, res) => {
     try {
-        const usuarios = db.prepare('SELECT id, nombre, username, rol FROM usuarios').all();
+        let usuarios;
+        if (req.user.rol === 'admin') {
+            usuarios = db.prepare('SELECT id, nombre, username, telefono, rol FROM usuarios').all();
+        } else if (req.user.rol === 'recepcionista') {
+            usuarios = db.prepare("SELECT id, nombre, username, telefono, rol FROM usuarios WHERE rol = 'barbero'").all();
+        } else {
+            return res.status(403).json({ error: 'Acceso denegado.' });
+        }
         res.json(usuarios);
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
 });
 
-router.post('/usuarios', requireAuth, requireAdmin, (req, res) => {
-    const { nombre, username, password, rol } = req.body;
+router.post('/usuarios', requireAuth, (req, res) => {
+    const { nombre, username, password, rol, telefono } = req.body;
+
     try {
-        const stmt = db.prepare('INSERT INTO usuarios (nombre, username, password, rol) VALUES (?, ?, ?, ?)');
-        const info = stmt.run(nombre, username, password, rol);
-        
-        logAudit(req.user.id, 'Crear Usuario', `Usuario ${username} creado con rol ${rol}`);
-        res.status(201).json({ mensaje: 'Usuario creado', id: info.lastInsertRowid });
+        let finalRol = rol || 'barbero';
+        let finalUsername = username;
+        let finalPassword = password;
+        let finalTelefono = telefono || '';
+
+        if (req.user.rol === 'recepcionista') {
+            // Recepcionista solo puede crear barberos, autogenera username/password
+            finalRol = 'barbero';
+            const suffix = Math.random().toString(36).substring(2, 8);
+            finalUsername = `barbero_${nombre.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${suffix}`;
+            finalPassword = `barber${Math.floor(1000 + Math.random() * 9000)}`;
+        } else if (req.user.rol === 'admin') {
+            if (finalRol === 'admin') {
+                return res.status(400).json({ error: 'No puedes crear usuarios con rol admin.' });
+            }
+            if (!finalUsername || !finalPassword) {
+                return res.status(400).json({ error: 'Admin debe proporcionar username y contraseña.' });
+            }
+        } else {
+            return res.status(403).json({ error: 'Acceso denegado.' });
+        }
+
+        const stmt = db.prepare('INSERT INTO usuarios (nombre, username, password, telefono, rol) VALUES (?, ?, ?, ?, ?)');
+        const info = stmt.run(nombre, finalUsername, finalPassword, finalTelefono, finalRol);
+
+        logAudit(req.user.id, 'Crear Usuario', `Usuario ${finalUsername} creado con rol ${finalRol}`);
+        res.status(201).json({ mensaje: 'Usuario creado', id: info.lastInsertRowid, username: finalUsername, password: finalPassword });
     } catch (error) {
+        if (error.message?.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'El nombre de usuario ya existe.' });
+        }
         res.status(500).json({ error: error.message });
     }
 });
 
-router.delete('/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
+router.put('/usuarios/:id', requireAuth, (req, res) => {
     const { id } = req.params;
-    try {
-        db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
-        logAudit(req.user.id, 'Eliminar Usuario', `Usuario ID ${id} eliminado`);
-        res.json({ mensaje: 'Usuario eliminado' });
-    } catch (error) {
-        res.status(500).json({ error: error.message });
-    }
-});
-
-router.put('/usuarios/:id', requireAuth, requireAdmin, (req, res) => {
-    const { id } = req.params;
-    const { nombre, username, password, rol } = req.body;
-    
-    // Contraseña obligatoria siempre
-    if (!nombre || !username || !password || !rol) {
-        return res.status(400).json({ error: 'Todos los campos son obligatorios, incluyendo la contraseña.' });
-    }
+    const { nombre, username, password, rol, telefono } = req.body;
 
     try {
-        const stmt = db.prepare('UPDATE usuarios SET nombre = ?, username = ?, password = ?, rol = ? WHERE id = ?');
-        stmt.run(nombre, username, password, rol, id);
-        
-        logAudit(req.user.id, 'Editar Usuario', `Usuario ID ${id} (${username}) actualizado.`);
+        const existing = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(id);
+        if (!existing) return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+        if (req.user.rol === 'recepcionista') {
+            if (existing.rol !== 'barbero') {
+                return res.status(403).json({ error: 'Solo puedes editar barberos.' });
+            }
+            // Recepcionista solo actualiza nombre y telefono
+            db.prepare('UPDATE usuarios SET nombre = ?, telefono = ? WHERE id = ?').run(nombre || existing.nombre, telefono ?? existing.telefono, id);
+        } else if (req.user.rol === 'admin') {
+            if (existing.id == 1 && rol && rol !== 'admin') {
+                return res.status(400).json({ error: 'No puedes cambiar el rol del administrador principal.' });
+            }
+            if (rol === 'admin' && existing.id != 1) {
+                return res.status(400).json({ error: 'No puedes asignar rol admin a otros usuarios.' });
+            }
+            const newNombre = nombre || existing.nombre;
+            const newUsername = username || existing.username;
+            const newRol = rol || existing.rol;
+            const newTelefono = telefono ?? existing.telefono;
+            // Password opcional en edición para admin
+            if (password) {
+                db.prepare('UPDATE usuarios SET nombre = ?, username = ?, password = ?, telefono = ?, rol = ? WHERE id = ?').run(newNombre, newUsername, password, newTelefono, newRol, id);
+            } else {
+                db.prepare('UPDATE usuarios SET nombre = ?, username = ?, telefono = ?, rol = ? WHERE id = ?').run(newNombre, newUsername, newTelefono, newRol, id);
+            }
+        } else {
+            return res.status(403).json({ error: 'Acceso denegado.' });
+        }
+
+        logAudit(req.user.id, 'Editar Usuario', `Usuario ID ${id} actualizado.`);
         res.json({ mensaje: 'Usuario actualizado correctamente' });
+    } catch (error) {
+        if (error.message?.includes('UNIQUE')) {
+            return res.status(400).json({ error: 'El nombre de usuario ya existe.' });
+        }
+        res.status(500).json({ error: error.message });
+    }
+});
+
+router.delete('/usuarios/:id', requireAuth, (req, res) => {
+    const { id } = req.params;
+    try {
+        const existing = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(id);
+        if (!existing) return res.status(404).json({ error: 'Usuario no encontrado.' });
+
+        if (req.user.rol === 'recepcionista') {
+            if (existing.rol !== 'barbero') {
+                return res.status(403).json({ error: 'Solo puedes eliminar barberos.' });
+            }
+        } else if (req.user.rol !== 'admin') {
+            return res.status(403).json({ error: 'Acceso denegado.' });
+        }
+
+        db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
+        logAudit(req.user.id, 'Eliminar Usuario', `Usuario ID ${id} (${existing.username}) eliminado`);
+        res.json({ mensaje: 'Usuario eliminado' });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

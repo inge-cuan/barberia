@@ -44,7 +44,7 @@ router.post('/', requireAuth, upload.single('imagen'), (req, res) => {
         return res.status(403).json({ error: 'No autorizado' });
     }
 
-    const { nombre, precio, costo_insumos } = req.body;
+    const { nombre, precio, duracion_minutos, costo_insumos } = req.body;
     let imagen_url = null;
     if (req.file) {
         imagen_url = `/uploads/servicios/${req.file.filename}`;
@@ -55,8 +55,8 @@ router.post('/', requireAuth, upload.single('imagen'), (req, res) => {
     }
 
     try {
-        const info = db.prepare('INSERT INTO servicios (nombre, precio, costo_insumos, imagen_url) VALUES (?, ?, ?, ?)')
-                       .run(nombre, precio, costo_insumos || 0, imagen_url);
+        const info = db.prepare('INSERT INTO servicios (nombre, precio, duracion_minutos, costo_insumos, imagen_url) VALUES (?, ?, ?, ?, ?)')
+                       .run(nombre, precio, duracion_minutos || 30, costo_insumos || 0, imagen_url);
         
         logAudit(req.user.id, 'Crear Servicio', `Servicio ${nombre} creado con ID ${info.lastInsertRowid}`);
         res.json({ id: info.lastInsertRowid, mensaje: 'Servicio creado exitosamente' });
@@ -72,7 +72,7 @@ router.put('/:id', requireAuth, upload.single('imagen'), (req, res) => {
     }
 
     const { id } = req.params;
-    const { nombre, precio, costo_insumos } = req.body;
+    const { nombre, precio, duracion_minutos, costo_insumos } = req.body;
     
     try {
         let stmt;
@@ -80,11 +80,11 @@ router.put('/:id', requireAuth, upload.single('imagen'), (req, res) => {
 
         if (req.file) {
             const imagen_url = `/uploads/servicios/${req.file.filename}`;
-            stmt = db.prepare('UPDATE servicios SET nombre = ?, precio = ?, costo_insumos = ?, imagen_url = ? WHERE id = ?');
-            queryParams = [nombre, precio, costo_insumos || 0, imagen_url, id];
+            stmt = db.prepare('UPDATE servicios SET nombre = ?, precio = ?, duracion_minutos = ?, costo_insumos = ?, imagen_url = ? WHERE id = ?');
+            queryParams = [nombre, precio, duracion_minutos || 30, costo_insumos || 0, imagen_url, id];
         } else {
-            stmt = db.prepare('UPDATE servicios SET nombre = ?, precio = ?, costo_insumos = ? WHERE id = ?');
-            queryParams = [nombre, precio, costo_insumos || 0, id];
+            stmt = db.prepare('UPDATE servicios SET nombre = ?, precio = ?, duracion_minutos = ?, costo_insumos = ? WHERE id = ?');
+            queryParams = [nombre, precio, duracion_minutos || 30, costo_insumos || 0, id];
         }
 
         stmt.run(...queryParams);
