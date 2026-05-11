@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { Plus, Pencil, Trash2, Image as ImageIcon } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 import FormDialog from './FormDialog';
 import ConfirmDialog from './ConfirmDialog';
 import EmptyState from './EmptyState';
@@ -17,6 +18,7 @@ export default function RecepcionistaServicios() {
   const [deleteTarget, setDeleteTarget] = useState(null);
   const [previewUrl, setPreviewUrl] = useState(null);
   const fileInputRef = useRef(null);
+  const toast = useToast();
 
   useEffect(() => {
     fetchServicios();
@@ -48,7 +50,7 @@ export default function RecepcionistaServicios() {
       if (res.ok) {
         setServicios(servicios.filter(s => s.id !== deleteTarget));
       } else {
-        alert('Error al eliminar');
+        toast('Error al eliminar', 'error');
       }
     } catch (error) {
       console.error(error);
@@ -112,7 +114,7 @@ export default function RecepcionistaServicios() {
         handleCancel();
       } else {
         const errorData = await res.json();
-        alert(errorData.error || 'Error al guardar');
+        toast(errorData.error || 'Error al guardar', 'error');
       }
     } catch (error) {
       console.error(error);

@@ -1,11 +1,13 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { useToast } from '../contexts/ToastContext';
 import StatCard from './StatCard';
 import PageTransition from './PageTransition';
 
 export default function AdminDashboard() {
   const { user } = useOutletContext();
+  const toast = useToast();
   const [stats, setStats] = useState({ ingresos: 0, gastos: 0, utilidad_bruta: 0, total_cortes: 0, mejor_servicio: 'N/A' });
   const [loading, setLoading] = useState(true);
   const [exporting, setExporting] = useState(false);
@@ -49,7 +51,7 @@ export default function AdminDashboard() {
       a.remove();
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      alert(error.message);
+      toast(error.message, 'error');
     } finally {
       setExporting(false);
     }

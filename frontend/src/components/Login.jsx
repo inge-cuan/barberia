@@ -91,7 +91,7 @@ export default function Login() {
             <Scissors size={30} color="#fff" />
           </div>
           <h1 style={{
-            fontFamily: "'Playfair Display', serif", fontSize: '1.75rem', fontWeight: 700,
+            fontFamily: "var(--font-heading)", fontSize: '1.75rem', fontWeight: 700, fontStyle: 'italic',
             color: 'var(--text-main)', margin: '0 0 0.25rem', letterSpacing: '-0.02em',
           }}>
             Barbería
@@ -115,9 +115,7 @@ export default function Login() {
           )}
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-              Usuario
-            </label>
+            <label className="label-sm">Usuario</label>
             <div style={{ position: 'relative' }}>
               <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
                 width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -125,22 +123,14 @@ export default function Login() {
               </svg>
               <input type="text" value={username} onChange={(e) => setUsername(e.target.value)}
                 placeholder="Ingresa tu usuario"
-                style={{
-                  width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', fontSize: '0.95rem', color: 'var(--text-main)',
-                  border: '1px solid var(--border-color)', borderRadius: '10px',
-                  background: 'var(--bg-color)', outline: 'none',
-                  transition: 'all 0.2s', boxSizing: 'border-box',
-                }}
-                onFocus={(e) => { e.target.style.borderColor = '#6f4e37'; e.target.style.boxShadow = '0 0 0 3px rgba(111,78,55,0.15)'; }}
-                onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.boxShadow = 'none'; }}
+                className="input-field"
+                style={{ padding: '0.8rem 1rem 0.8rem 2.5rem' }}
               />
             </div>
           </div>
 
           <div>
-            <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.4rem' }}>
-              Contraseña
-            </label>
+            <label className="label-sm">Contraseña</label>
             <div style={{ position: 'relative' }}>
               <svg style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }}
                 width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -148,14 +138,8 @@ export default function Login() {
               </svg>
               <input type="password" value={password} onChange={(e) => setPassword(e.target.value)}
                 placeholder="Ingresa tu contraseña"
-                style={{
-                  width: '100%', padding: '0.8rem 1rem 0.8rem 2.5rem', fontSize: '0.95rem', color: 'var(--text-main)',
-                  border: '1px solid var(--border-color)', borderRadius: '10px',
-                  background: 'var(--bg-color)', outline: 'none',
-                  transition: 'all 0.2s', boxSizing: 'border-box',
-                }}
-                onFocus={(e) => { e.target.style.borderColor = '#6f4e37'; e.target.style.boxShadow = '0 0 0 3px rgba(111,78,55,0.15)'; }}
-                onBlur={(e) => { e.target.style.borderColor = 'var(--border-color)'; e.target.style.boxShadow = 'none'; }}
+                className="input-field"
+                style={{ padding: '0.8rem 1rem 0.8rem 2.5rem' }}
               />
             </div>
           </div>

@@ -1,7 +1,6 @@
 @import "tailwindcss";
-@import "@fontsource-variable/geist";
 @import "tw-animate-css";
-@import url("https://fonts.googleapis.com/css2?family=Playfair+Display:wght@600;700&family=Manrope:wght@400;500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap");
 
 @theme inline {
   --color-background: var(--background);
@@ -62,16 +61,25 @@
   --accent-tertiary: #ffb4ab;
   --border-color: #4d4635;
 
-  --font-sans:
-    -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  --font-heading: 'Cormorant Garamond', Georgia, 'Times New Roman', serif;
   --font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
 
   --shadow-soft:
     0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2);
   --shadow-hover:
     0 10px 15px -3px rgba(0, 0, 0, 0.4), 0 4px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 4px 8px rgba(0, 0, 0, 0.15),
+    0 12px 32px rgba(0, 0, 0, 0.1);
+  --shadow-elevated:
+    0 2px 4px rgba(0, 0, 0, 0.3),
+    0 8px 16px rgba(0, 0, 0, 0.12),
+    0 24px 48px rgba(111, 78, 55, 0.08);
 
   --transition-smooth: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  --transition-ease: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
   --radius: 12px;
 }
 
@@ -94,6 +102,14 @@
     0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
   --shadow-hover:
     0 10px 25px -5px rgba(0, 0, 0, 0.08), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+  --shadow-card:
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    0 4px 8px rgba(0, 0, 0, 0.04),
+    0 12px 24px rgba(0, 0, 0, 0.03);
+  --shadow-elevated:
+    0 2px 4px rgba(0, 0, 0, 0.06),
+    0 8px 16px rgba(0, 0, 0, 0.04),
+    0 24px 48px rgba(111, 78, 55, 0.06);
 }
 
 * {
@@ -112,10 +128,36 @@ body {
 }
 
 h1, h2, h3, h4 {
-  font-family: var(--font-sans);
+  font-family: var(--font-heading);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--on-surface);
+}
+
+h1 {
+  font-size: 1.75rem;
+  font-style: italic;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: var(--on-surface);
+}
+
+h2 {
+  font-size: 1.4rem;
+  font-weight: 600;
+}
+
+h3 {
+  font-size: 1.15rem;
+  font-weight: 500;
+}
+
+/* Small caps utility */
+.text-overline {
+  font-size: 0.65rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
 }
 
 /* Animations */
@@ -391,28 +433,60 @@ h1, h2, h3, h4 {
   .bento-col-10 { grid-column: span 12; }
 }
 
-/* Cards */
+/* Cards — Glassmorphism refined */
 .card, .bento-card {
-  background: linear-gradient(135deg, rgba(30,32,32,0.95), rgba(28,30,30,0.98));
-  border: 1px solid var(--border-color);
+  background: linear-gradient(135deg, rgba(30,32,32,0.88), rgba(26,28,28,0.94));
+  border: 1px solid rgba(255, 255, 255, 0.06);
   border-radius: 1.25rem;
   padding: 1.5rem;
   position: relative;
   overflow: hidden;
-  box-shadow: var(--shadow-soft);
-  transition: all 0.3s ease;
+  box-shadow: var(--shadow-card);
+  transition: var(--transition-ease);
   display: flex;
   flex-direction: column;
+  transform: translateY(0);
+}
+
+.card::before, .bento-card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: radial-gradient(rgba(255,255,255,0.015) 1px, transparent 1px);
+  background-size: 24px 24px;
+  pointer-events: none;
+}
+
+.card::after, .bento-card::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 1.5rem;
+  right: 1.5rem;
+  height: 1.5px;
+  background: linear-gradient(90deg, transparent, rgba(111,78,55,0.4), transparent);
+  border-radius: 1px;
+  opacity: 0;
+  transition: opacity 0.4s ease;
 }
 
 .light .card, .light .bento-card {
-  background: #ffffff;
+  background: rgba(255, 255, 255, 0.92);
+  border-color: rgba(0, 0, 0, 0.06);
+}
+
+.light .card::before, .light .bento-card::before {
+  background-image: radial-gradient(rgba(0,0,0,0.02) 1px, transparent 1px);
 }
 
 .card:hover, .bento-card:hover {
-  border-color: var(--accent-primary);
-  box-shadow: var(--shadow-hover);
-  transform: translateY(-2px);
+  border-color: rgba(111,78,55,0.3);
+  box-shadow: var(--shadow-elevated);
+  transform: translateY(-3px);
+}
+
+.card:hover::after, .bento-card:hover::after {
+  opacity: 1;
 }
 
 .card h3, .bento-card h3 {
@@ -431,6 +505,61 @@ h1, h2, h3, h4 {
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   margin-top: auto;
+}
+
+/* Global Input Styles */
+.input-field {
+  width: 100%;
+  padding: 0.7rem 1rem;
+  font-size: 0.95rem;
+  color: var(--text-main);
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+  outline: none;
+  box-sizing: border-box;
+  transition: var(--transition-ease);
+  font-family: var(--font-sans);
+}
+
+.input-field:focus {
+  border-color: var(--accent-primary);
+  box-shadow: 0 0 0 3px rgba(111, 78, 55, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.input-field::placeholder {
+  color: var(--text-muted);
+  font-style: italic;
+  opacity: 0.6;
+}
+
+.light .input-field {
+  background: rgba(0, 0, 0, 0.02);
+}
+
+.light .input-field:focus {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+select.input-field {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23d0c5af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 1rem center;
+  padding-right: 2.5rem;
+}
+
+/* Label styling */
+.label-sm {
+  display: block;
+  font-size: 0.7rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.4rem;
 }
 
 /* Tables */
@@ -562,6 +691,67 @@ h1, h2, h3, h4 {
 }
 .cita-card-small:hover button {
   opacity: 1 !important;
+}
+
+/* Floating stat icon */
+.stat-icon-float {
+  position: absolute;
+  right: -0.25rem;
+  bottom: -0.25rem;
+  font-size: 4rem;
+  opacity: 0.06;
+  transform: rotate(-5deg);
+  pointer-events: none;
+  line-height: 1;
+  user-select: none;
+}
+
+/* Toast Container */
+.toast-container {
+  position: fixed;
+  top: 1.25rem;
+  right: 1.25rem;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  pointer-events: none;
+}
+
+.toast {
+  pointer-events: auto;
+  padding: 0.85rem 1.25rem;
+  border-radius: 12px;
+  box-shadow:
+    0 4px 12px rgba(0, 0, 0, 0.2),
+    0 12px 32px rgba(0, 0, 0, 0.12);
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #fff;
+  min-width: 280px;
+  max-width: 420px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.toast--success {
+  background: rgba(22, 163, 74, 0.92);
+}
+
+.toast--error {
+  background: rgba(220, 38, 38, 0.92);
+}
+
+.toast--info {
+  background: rgba(59, 130, 246, 0.92);
+}
+
+.toast--warning {
+  background: rgba(245, 158, 11, 0.92);
 }
 
 /* Light mode adjustments for beige cards */

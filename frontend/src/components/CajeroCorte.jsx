@@ -2,11 +2,13 @@ import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { DollarSign, Banknote, CreditCard, Smartphone, AlertCircle } from 'lucide-react';
+import { useToast } from '../contexts/ToastContext';
 import StatCard from './StatCard';
 import PageTransition from './PageTransition';
 
 export default function CajeroCorte() {
   const { user } = useOutletContext();
+  const toast = useToast();
   const [resumen, setResumen] = useState(null);
   const [loading, setLoading] = useState(true);
   const [montoReal, setMontoReal] = useState('');
@@ -49,7 +51,7 @@ export default function CajeroCorte() {
         fetchResumen();
       } else {
         const data = await res.json();
-        alert(data.error);
+        toast(data.error, 'error');
       }
     } catch (error) {
       console.error(error);
@@ -69,11 +71,11 @@ export default function CajeroCorte() {
       });
       const data = await res.json();
       if (res.ok) {
-        alert(data.mensaje);
+        toast(data.mensaje, 'success');
         setResumen(null);
         setMontoReal('');
       } else {
-        alert(data.error);
+        toast(data.error, 'error');
       }
     } catch (error) {
       console.error(error);

@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Pencil, Trash2, Plus, Phone, User as UserIcon } from "lucide-react";
+import { useToast } from "../contexts/ToastContext";
 import FormDialog from "./FormDialog";
 import ConfirmDialog from "./ConfirmDialog";
 import EmptyState from "./EmptyState";
@@ -28,6 +29,7 @@ function RolBadge({ rol }) {
 export default function AdminUsuarios() {
   const { user } = useOutletContext();
   const isRecepcionista = user?.rol === 'recepcionista';
+  const toast = useToast();
 
   const [usuarios, setUsuarios] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -104,9 +106,9 @@ export default function AdminUsuarios() {
         : { nombre: formData.nombre, username: formData.username, rol: formData.rol, telefono: formData.telefono, ...(formData.password ? { password: formData.password } : {}) };
 
       if (!isRecepcionista && !isEditing && !formData.password) {
-        alert("LA CONTRASEÑA ES OBLIGATORIA."); return;
+        toast("La contraseña es obligatoria.", "error"); return;
       }
-      if (!formData.nombre) { alert("El nombre es obligatorio."); return; }
+      if (!formData.nombre) { toast("El nombre es obligatorio.", "error"); return; }
 
       const url = isEditing ? `http://localhost:3000/api/admin/usuarios/${formData.id}` : "http://localhost:3000/api/admin/usuarios";
       const method = isEditing ? "PUT" : "POST";
@@ -127,7 +129,7 @@ export default function AdminUsuarios() {
         if (!isEditing && !isRecepcionista) handleCloseModal();
       } else {
         const data = await res.json();
-        alert(data.error || "Error al guardar");
+        toast(data.error || "Error al guardar", "error");
       }
     } catch (error) {
       console.error(error);
@@ -147,7 +149,7 @@ export default function AdminUsuarios() {
       if (res.ok) {
         setUsuarios(usuarios.filter((u) => u.id !== deleteTarget));
       } else {
-        alert("Error al eliminar");
+        toast("Error al eliminar", "error");
       }
     } catch (error) {
       console.error(error);
@@ -276,25 +278,19 @@ export default function AdminUsuarios() {
       >
         <form onSubmit={handleSubmit} style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>Nombre Completo</label>
-            <input required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-              style={{ width: "100%", padding: "0.7rem 1rem", fontSize: "0.95rem", color: "var(--text-main)", border: "1px solid var(--border-color)", borderRadius: "10px", background: "var(--bg-color)", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-              onFocus={(e) => { e.target.style.borderColor = "#6f4e37"; e.target.style.boxShadow = "0 0 0 3px rgba(111,78,55,0.1)"; }}
-              onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
-            />
+            <label className="label-sm">Nombre Completo</label>
+            <input className="input-field" required value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} />
           </div>
 
           <div>
-            <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-              Teléfono <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(opcional)</span>
+            <label className="label-sm">
+              Teléfono <span style={{ color: "var(--text-muted)", fontWeight: 400, textTransform: 'none', letterSpacing: 'normal' }}>(opcional)</span>
             </label>
             <div style={{ position: 'relative' }}>
               <Phone size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)', pointerEvents: 'none' }} />
-              <input value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+              <input className="input-field" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
                 placeholder="Ej: 55-1234-5678"
-                style={{ width: "100%", padding: "0.7rem 1rem 0.7rem 2.5rem", fontSize: "0.95rem", color: "var(--text-main)", border: "1px solid var(--border-color)", borderRadius: "10px", background: "var(--bg-color)", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                onFocus={(e) => { e.target.style.borderColor = "#6f4e37"; e.target.style.boxShadow = "0 0 0 3px rgba(111,78,55,0.1)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
+                style={{ paddingLeft: '2.5rem' }}
               />
             </div>
           </div>
@@ -302,60 +298,25 @@ export default function AdminUsuarios() {
           {!isRecepcionista && (
             <>
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>Usuario (Login)</label>
-                <input required value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })}
-                  style={{ width: "100%", padding: "0.7rem 1rem", fontSize: "0.95rem", color: "var(--text-main)", border: "1px solid var(--border-color)", borderRadius: "10px", background: "var(--bg-color)", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                  onFocus={(e) => { e.target.style.borderColor = "#6f4e37"; e.target.style.boxShadow = "0 0 0 3px rgba(111,78,55,0.1)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
-                />
+                <label className="label-sm">Usuario (Login)</label>
+                <input className="input-field" required value={formData.username} onChange={(e) => setFormData({ ...formData, username: e.target.value })} />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>
-                  Contraseña {!isEditing && <span style={{ color: "#dc2626", fontWeight: 500 }}>*</span>}
-                  {isEditing && <span style={{ color: "var(--text-muted)", fontWeight: 400 }}>(dejar vacío para mantener)</span>}
+                <label className="label-sm">
+                  Contraseña {!isEditing && <span style={{ color: "#dc2626", fontWeight: 500, textTransform: 'none', letterSpacing: 'normal' }}>*</span>}
+                  {isEditing && <span style={{ color: "var(--text-muted)", fontWeight: 400, textTransform: 'none', letterSpacing: 'normal' }}>(dejar vacío para mantener)</span>}
                 </label>
-                <input required={!isEditing} type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                  style={{ width: "100%", padding: "0.7rem 1rem", fontSize: "0.95rem", color: "var(--text-main)", border: "1px solid var(--border-color)", borderRadius: "10px", background: "var(--bg-color)", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                  onFocus={(e) => { e.target.style.borderColor = "#6f4e37"; e.target.style.boxShadow = "0 0 0 3px rgba(111,78,55,0.1)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
-                />
+                <input className="input-field" required={!isEditing} type="password" value={formData.password} onChange={(e) => setFormData({ ...formData, password: e.target.value })} />
               </div>
               <div>
-                <label style={{ display: "block", fontSize: "0.85rem", fontWeight: 600, color: "var(--text-main)", marginBottom: "0.4rem" }}>Rol</label>
-                <select value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}
-                  style={{ width: "100%", padding: "0.7rem 1rem", fontSize: "0.95rem", color: "var(--text-main)", border: "1px solid var(--border-color)", borderRadius: "10px", background: "var(--bg-color)", outline: "none", boxSizing: "border-box", transition: "border-color 0.2s" }}
-                  onFocus={(e) => { e.target.style.borderColor = "#6f4e37"; e.target.style.boxShadow = "0 0 0 3px rgba(111,78,55,0.1)"; }}
-                  onBlur={(e) => { e.target.style.borderColor = "var(--border-color)"; e.target.style.boxShadow = "none"; }}
-                >
+                <label className="label-sm">Rol</label>
+                <select className="input-field" value={formData.rol} onChange={(e) => setFormData({ ...formData, rol: e.target.value })}>
                   <option value="barbero">Barbero</option>
                   <option value="recepcionista">Secretaria/Recepcionista</option>
                 </select>
               </div>
             </>
           )}
-
-          {createdInfo && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} style={{
-              padding: "0.75rem 1rem", borderRadius: "10px",
-              background: "rgba(22,163,74,0.1)", border: "1px solid rgba(22,163,74,0.3)",
-              fontSize: "0.85rem", color: "#16a34a", fontWeight: 500,
-            }}>
-              Barbero creado correctamente.
-            </motion.div>
-          )}
-
-          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
-            <button type="button" onClick={handleCloseModal}
-              style={{ padding: "0.65rem 1.25rem", borderRadius: "999px", border: "1px solid var(--border-color)", background: "transparent", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}
-            >
-              Cancelar
-            </button>
-            <button type="submit"
-              style={{ padding: "0.65rem 1.25rem", borderRadius: "999px", border: "none", background: "linear-gradient(135deg, #6f4e37, #8a6344)", color: "#fff", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(111,78,55,0.3)" }}
-            >
-              {isEditing ? "Guardar Cambios" : (isRecepcionista ? "Crear Barbero" : "Crear Empleado")}
-            </button>
-          </div>
         </form>
       </FormDialog>
 
