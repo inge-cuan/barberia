@@ -49,6 +49,78 @@ router.get('/dashboard', requireAuth, requireAdmin, (req, res) => {
     }
 });
 
+// Dashboard — gráficas diarias, top barbero, top servicio
+router.get('/graficas', requireAuth, requireAdmin, (req, res) => {
+    try {
+        const { rango, month, year } = req.query;
+        let startDate, endDate;
+
+        const now = new Date();
+        if (rango === 'semana') {
+            endDate = now.toISOString().split('T')[0];
+            const weekAgo = new Date(now);
+            weekAgo.setDate(weekAgo.getDate() - 6);
+            startDate = weekAgo.toISOString().split('T')[0];
+        } else {
+            const m = parseInt(month) || now.getMonth() + 1;
+            const y = parseInt(year) || now.getFullYear();
+            startDate = `${y}-${String(m).padStart(2, '0')}-01`;
+            const lastDay = new Date(y, m, 0).getDate();
+            endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
+        }
+
+        // Cortes diarios (citas completadas por fecha)
+        const cortesDiarios = db.prepare(`
+            SELECT fecha, COUNT(*) as cortes
+            FROM citas
+            WHERE estado = 'completada' AND fecha BETWEEN ? AND ?
+            GROUP BY fecha ORDER BY fecha
+        `).all(startDate, endDate);
+
+        // Ingresos diarios (ventas por fecha)
+        const ingresosDiarios = db.prepare(`
+            SELECT date(fecha) as fecha, SUM(total) as ingresos
+            FROM ventas
+            WHERE date(fecha) BETWEEN ? AND ?
+            GROUP BY date(fecha) ORDER BY fecha
+        `).all(startDate, endDate);
+
+        // Combinar datos diarios
+        const fechas = {};
+        for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
+            const key = d.toISOString().split('T')[0];
+            fechas[key] = { fecha: key, cortes: 0, ingresos: 0 };
+        }
+        cortesDiarios.forEach(r => { if (fechas[r.fecha]) fechas[r.fecha].cortes = r.cortes; });
+        ingresosDiarios.forEach(r => { if (fechas[r.fecha]) fechas[r.fecha].ingresos = r.ingresos; });
+        const diario = Object.values(fechas);
+
+        // Top barbero (citas completadas)
+        const topBarbero = db.prepare(`
+            SELECT u.nombre, COUNT(*) as total
+            FROM citas c JOIN usuarios u ON c.barbero_id = u.id
+            WHERE c.estado = 'completada' AND c.fecha BETWEEN ? AND ?
+            GROUP BY c.barbero_id ORDER BY total DESC LIMIT 1
+        `).get(startDate, endDate) || { nombre: 'N/A', total: 0 };
+
+        // Top servicio (citas completadas)
+        const topServicio = db.prepare(`
+            SELECT s.nombre, COUNT(*) as total
+            FROM citas c JOIN servicios s ON c.servicio_id = s.id
+            WHERE c.estado = 'completada' AND c.fecha BETWEEN ? AND ?
+            GROUP BY c.servicio_id ORDER BY total DESC LIMIT 1
+        `).get(startDate, endDate) || { nombre: 'N/A', total: 0 };
+
+        // Totales del período
+        const totalCortes = diario.reduce((s, d) => s + d.cortes, 0);
+        const totalIngresos = diario.reduce((s, d) => s + d.ingresos, 0);
+
+        res.json({ diario, topBarbero, topServicio, totalCortes, totalIngresos, startDate, endDate });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 // Auditoría Log
 router.get('/auditoria', requireAuth, requireAdmin, (req, res) => {
     try {
@@ -168,6 +240,7 @@ router.put('/usuarios/:id', requireAuth, (req, res) => {
 
 router.delete('/usuarios/:id', requireAuth, (req, res) => {
     const { id } = req.params;
+    const { force } = req.body || {};
     try {
         const existing = db.prepare('SELECT * FROM usuarios WHERE id = ?').get(id);
         if (!existing) return res.status(404).json({ error: 'Usuario no encontrado.' });
@@ -180,9 +253,33 @@ router.delete('/usuarios/:id', requireAuth, (req, res) => {
             return res.status(403).json({ error: 'Acceso denegado.' });
         }
 
+        const citas = db.prepare('SELECT COUNT(*) as c FROM citas WHERE barbero_id = ? OR creado_por = ?').get(id, id).c;
+        const ventas = db.prepare('SELECT COUNT(*) as c FROM ventas WHERE barbero_id = ?').get(id).c;
+        const cajas = db.prepare('SELECT COUNT(*) as c FROM cajas WHERE recepcionista_id = ?').get(id).c;
+        const logs = db.prepare('SELECT COUNT(*) as c FROM auditoria_log WHERE usuario_id = ?').get(id).c;
+
+        const total = citas + ventas + cajas + logs;
+
+        if (total > 0 && !force) {
+            return res.status(409).json({
+                error: `El usuario tiene ${total} registro(s) asociado(s): ${citas} cita(s), ${ventas} venta(s), ${cajas} caja(s). Usa force=true para eliminar.`,
+                related: { citas, ventas, cajas, logs }
+            });
+        }
+
+        if (force) {
+            db.prepare('UPDATE citas SET barbero_id = NULL WHERE barbero_id = ?').run(id);
+            db.prepare('UPDATE citas SET creado_por = NULL WHERE creado_por = ?').run(id);
+            db.prepare('UPDATE ventas SET barbero_id = NULL WHERE barbero_id = ?').run(id);
+            db.prepare('UPDATE cajas SET recepcionista_id = NULL WHERE recepcionista_id = ?').run(id);
+            db.prepare('DELETE FROM auditoria_log WHERE usuario_id = ?').run(id);
+        }
+
         db.prepare('DELETE FROM usuarios WHERE id = ?').run(id);
-        logAudit(req.user.id, 'Eliminar Usuario', `Usuario ID ${id} (${existing.username}) eliminado`);
-        res.json({ mensaje: 'Usuario eliminado' });
+        logAudit(req.user.id, force ? 'Eliminar Usuario (force)' : 'Eliminar Usuario',
+            `Usuario ID ${id} (${existing.username}) eliminado${force ? ` con ${total} registros reasignados` : ''}`);
+        res.json({ mensaje: 'Usuario eliminado', force, registros_afectados: force ? total : 0 });
+
     } catch (error) {
         res.status(500).json({ error: error.message });
     }

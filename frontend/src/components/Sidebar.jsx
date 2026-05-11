@@ -1,5 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
-import { Scissors, LayoutDashboard, Users, History, DollarSign, CalendarPlus, CalendarCheck, LogOut, PanelLeftClose, PanelLeftOpen, Sun, Moon, UserCog, CreditCard } from "lucide-react";
+import { Scissors, LayoutDashboard, Users, History, DollarSign, CalendarPlus, CalendarCheck, LogOut, PanelLeftClose, PanelLeftOpen, Sun, Moon, UserCog } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
 const getLinks = (role) => [
@@ -10,7 +10,7 @@ const getLinks = (role) => [
   { to: "/dashboard/gestion-citas", label: "Gestión Citas", icon: CalendarCheck },
   { to: "/dashboard/servicios", label: "Servicios", icon: Scissors },
   { to: "/dashboard/corte", label: "Corte de Caja", icon: DollarSign },
-  ...(role === 'recepcionista' ? [{ to: "/dashboard/caja", label: "Caja", icon: CreditCard }] : []),
+
   ...(role === 'admin' ? [{ to: "/dashboard/historial-caja", label: "Historial Caja", icon: History }] : []),
 ];
 

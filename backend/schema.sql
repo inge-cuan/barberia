@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS auditoria_log (
 CREATE TABLE IF NOT EXISTS citas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     cliente_nombre TEXT NOT NULL,
-    barbero_id INTEGER NOT NULL,
+    barbero_id INTEGER,
     servicio_id INTEGER NOT NULL,
     fecha DATE NOT NULL,
     hora TIME NOT NULL,

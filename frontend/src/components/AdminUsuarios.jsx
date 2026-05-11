@@ -26,6 +26,8 @@ function RolBadge({ rol }) {
   );
 }
 
+const BASE = 'http://localhost:3000';
+
 export default function AdminUsuarios() {
   const { user } = useOutletContext();
   const isRecepcionista = user?.rol === 'recepcionista';
@@ -37,6 +39,7 @@ export default function AdminUsuarios() {
   const [isEditing, setIsEditing] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState(null);
+  const [deleteForceTarget, setDeleteForceTarget] = useState(null);
   const [createdInfo, setCreatedInfo] = useState(null);
 
   useEffect(() => {
@@ -142,19 +145,50 @@ export default function AdminUsuarios() {
     if (!deleteTarget) return;
     try {
       const token = localStorage.getItem("token");
-      const res = await fetch(`http://localhost:3000/api/admin/usuarios/${deleteTarget}`, {
+      const res = await fetch(`${BASE}/api/admin/usuarios/${deleteTarget}`, {
         method: "DELETE",
-        headers: { Authorization: `Bearer ${token}` },
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({}),
       });
       if (res.ok) {
         setUsuarios(usuarios.filter((u) => u.id !== deleteTarget));
+        toast("Usuario eliminado", "success");
+        setDeleteTarget(null);
+      } else if (res.status === 409) {
+        const data = await res.json();
+        setDeleteForceTarget({ id: deleteTarget, related: data.related });
+        setDeleteTarget(null);
       } else {
-        toast("Error al eliminar", "error");
+        const data = await res.json();
+        toast(data.error || "Error al eliminar", "error");
+        setDeleteTarget(null);
       }
     } catch (error) {
-      console.error(error);
-    } finally {
+      toast("Error de conexión", "error");
       setDeleteTarget(null);
+    }
+  };
+
+  const confirmForceDelete = async () => {
+    if (!deleteForceTarget) return;
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`${BASE}/api/admin/usuarios/${deleteForceTarget.id}`, {
+        method: "DELETE",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ force: true }),
+      });
+      if (res.ok) {
+        setUsuarios(usuarios.filter((u) => u.id !== deleteForceTarget.id));
+        toast("Usuario eliminado. Citas y registros reasignados.", "warning");
+      } else {
+        const data = await res.json();
+        toast(data.error || "Error al eliminar", "error");
+      }
+    } catch (error) {
+      toast("Error de conexión", "error");
+    } finally {
+      setDeleteForceTarget(null);
     }
   };
 
@@ -317,6 +351,19 @@ export default function AdminUsuarios() {
               </div>
             </>
           )}
+
+          <div style={{ display: "flex", gap: "0.75rem", justifyContent: "flex-end", marginTop: "0.5rem" }}>
+            <button type="button" onClick={handleCloseModal}
+              style={{ padding: "0.65rem 1.25rem", borderRadius: "999px", border: "1px solid var(--border-color)", background: "transparent", color: "var(--text-muted)", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer" }}
+            >
+              Cancelar
+            </button>
+            <button type="submit"
+              style={{ padding: "0.65rem 1.25rem", borderRadius: "999px", border: "none", background: "linear-gradient(135deg, #6f4e37, #8a6344)", color: "#fff", fontWeight: 600, fontSize: "0.9rem", cursor: "pointer", boxShadow: "0 4px 12px rgba(111,78,55,0.3)" }}
+            >
+              {isEditing ? "Guardar Cambios" : (isRecepcionista ? "Crear Barbero" : "Crear Empleado")}
+            </button>
+          </div>
         </form>
       </FormDialog>
 
@@ -327,6 +374,16 @@ export default function AdminUsuarios() {
         title="¿Eliminar?"
         message="Esta acción no se puede deshacer. El usuario será eliminado permanentemente del sistema."
         confirmText="Eliminar"
+        destructive={true}
+      />
+
+      <ConfirmDialog
+        isOpen={deleteForceTarget !== null}
+        onClose={() => setDeleteForceTarget(null)}
+        onConfirm={confirmForceDelete}
+        title="¿Eliminar de todas formas?"
+        message={`Este usuario tiene ${deleteForceTarget?.related?.citas || 0} cita(s), ${deleteForceTarget?.related?.ventas || 0} venta(s) y ${deleteForceTarget?.related?.cajas || 0} caja(s) asociadas. Se eliminarán sus registros de auditoría y las citas quedarán sin barbero asignado.`}
+        confirmText="Eliminar de todas formas"
         destructive={true}
       />
     </PageTransition>

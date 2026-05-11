@@ -66,7 +66,7 @@ export default function Calendar2Weeks({
 
   const isToday = (d) => d.toDateString() === today.toDateString();
 
-  const isSelected = (d) => selectedDate && d.toDateString() === new Date(selectedDate).toDateString();
+  const isSelected = (d) => selectedDate && d.toDateString() === new Date(selectedDate + 'T12:00:00').toDateString();
 
   const fetchDisponibilidad = useCallback(async () => {
     if (!selectedDate || !barberoId || !servicioId) return;
