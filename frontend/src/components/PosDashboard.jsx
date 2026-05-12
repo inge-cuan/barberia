@@ -25,7 +25,14 @@ export default function PosDashboard() {
   const [ticketImprimir, setTicketImprimir] = useState(null);
 
   useEffect(() => {
-    if (citaData?.venta) {
+    if (citaData?.productos) {
+      const items = citaData.productos.map(p => ({
+        nombre: `${p.cantidad}x ${p.nombre}`,
+        precio: p.subtotal,
+      }));
+      setTicketItems(items);
+      setTotal(citaData.total);
+    } else if (citaData?.venta) {
       const items = [];
       if (citaData.servicio) {
         items.push({ nombre: citaData.servicio.nombre || citaData.venta.cliente_nombre || 'Servicio', precio: citaData.venta.total });
@@ -68,14 +75,13 @@ export default function PosDashboard() {
     setLoadingCobro(true);
     try {
       const token = localStorage.getItem('token');
+      const body = citaData?.productos
+        ? { productos: citaData.productos.map(p => ({ id: p.id, cantidad: p.cantidad })), metodo }
+        : { barbero_id: 1, servicio_ids: [], metodo };
       const res = await fetch('http://localhost:3000/api/ventas', {
         method: 'POST',
         headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          barbero_id: 1,
-          servicio_ids: [],
-          metodo,
-        })
+        body: JSON.stringify(body)
       });
       const data = await res.json();
       if (res.ok) {

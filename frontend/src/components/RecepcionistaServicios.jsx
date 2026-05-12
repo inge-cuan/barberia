@@ -261,14 +261,44 @@ export default function RecepcionistaServicios() {
           </div>
           <div>
             <label style={{ display: 'block', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.4rem' }}>Imagen Representativa</label>
-            <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange}
-              style={{ width: '100%', padding: '0.6rem', fontSize: '0.9rem', color: 'var(--text-main)', border: '1px solid var(--border-color)', borderRadius: '10px', background: 'var(--bg-color)', boxSizing: 'border-box' }}
-            />
-            {previewUrl && (
-              <div style={{ marginTop: '0.5rem', borderRadius: '8px', overflow: 'hidden', width: '120px', height: '80px' }}>
-                <img src={previewUrl} alt="Preview" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              </div>
-            )}
+            <label style={{
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              width: '100%', minHeight: previewUrl ? 'auto' : '100px',
+              padding: previewUrl ? '0.5rem' : '1.5rem 1rem',
+              borderRadius: '14px', border: '2px dashed var(--border-color)',
+              cursor: 'pointer', color: 'var(--text-muted)', fontSize: '0.85rem',
+              background: 'rgba(111,78,55,0.04)',
+              transition: 'all 0.25s ease', position: 'relative', overflow: 'hidden',
+            }}
+              onMouseEnter={(e) => { e.currentTarget.style.borderColor = '#6f4e37'; e.currentTarget.style.background = 'rgba(111,78,55,0.08)'; }}
+              onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'var(--border-color)'; e.currentTarget.style.background = 'rgba(111,78,55,0.04)'; }}
+            >
+              {previewUrl ? (
+                <div style={{ width: '100%' }}>
+                  <img src={previewUrl} alt="Preview"
+                    style={{ width: '100%', maxHeight: '140px', objectFit: 'contain', borderRadius: '10px' }}
+                  />
+                  <div style={{
+                    textAlign: 'center', fontSize: '0.75rem', color: 'var(--text-muted)',
+                    opacity: 0.6, marginTop: '0.35rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.3rem',
+                  }}>
+                    Click para cambiar imagen
+                  </div>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{
+                    width: '40px', height: '40px', borderRadius: '12px',
+                    background: 'rgba(111,78,55,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  }}>
+                    <ImageIcon size={20} style={{ color: 'var(--accent-primary)' }} />
+                  </div>
+                  <span>Seleccionar imagen</span>
+                  <span style={{ fontSize: '0.75rem', opacity: 0.5 }}>PNG, JPG, WEBP</span>
+                </div>
+              )}
+              <input type="file" accept="image/*" ref={fileInputRef} onChange={handleImageChange} style={{ display: 'none' }} />
+            </label>
           </div>
           <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'flex-end', marginTop: '0.5rem' }}>
             <button type="button" onClick={handleCancel}

@@ -33,7 +33,19 @@ CREATE TABLE IF NOT EXISTS inventario (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     nombre TEXT NOT NULL,
     stock INTEGER NOT NULL DEFAULT 0,
-    precio_venta REAL DEFAULT 0
+    precio_venta REAL DEFAULT 0,
+    imagen_url TEXT DEFAULT ''
+);
+
+-- Crear tabla venta_productos (productos vendidos en una venta)
+CREATE TABLE IF NOT EXISTS venta_productos (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    venta_id INTEGER NOT NULL,
+    producto_id INTEGER NOT NULL,
+    cantidad INTEGER NOT NULL DEFAULT 1,
+    precio_unitario REAL NOT NULL,
+    FOREIGN KEY (venta_id) REFERENCES ventas(id),
+    FOREIGN KEY (producto_id) REFERENCES inventario(id)
 );
 
 -- Crear tabla servicio_insumos

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, PieChart, Pie, Cell } from 'recharts';
 import { useToast } from '../contexts/ToastContext';
 import PageTransition from './PageTransition';
 
@@ -11,6 +11,8 @@ const meses = [
   'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
   'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre',
 ];
+
+const DONUT_COLORS = ['#6f4e37', '#8a6344', '#a67c52', '#c49a6c', '#d4a76a', '#b8845a', '#9a6f4a', '#7a5a3a'];
 
 function ChartTooltip({ active, payload, label }) {
   if (!active || !payload) return null;
@@ -206,15 +208,27 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="bento-grid">
+          <div className="bento-grid" style={{ marginBottom: '1.5rem' }}>
             <div className="bento-col-4">
               <motion.div className="bento-card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}
                 style={{ gap: '0.5rem' }}
               >
                 <span className="text-overline">Total Cortes</span>
-                <span style={{ fontSize: '2.4rem', fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '-0.03em' }}>
-                  {data.totalCortes}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2.4rem', fontWeight: 700, color: 'var(--accent-primary)', letterSpacing: '-0.03em' }}>
+                    {data.totalCortes}
+                  </span>
+                  {data.semanaAnterior && data.semanaAnterior.cortes > 0 && (
+                    <span style={{
+                      fontSize: '0.8rem', fontWeight: 600,
+                      color: data.totalCortes >= data.semanaAnterior.cortes ? '#16a34a' : '#dc2626',
+                      display: 'flex', alignItems: 'center', gap: '0.2rem',
+                    }}>
+                      {data.totalCortes >= data.semanaAnterior.cortes ? '↑' : '↓'}
+                      {Math.abs(((data.totalCortes - data.semanaAnterior.cortes) / data.semanaAnterior.cortes) * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {rango === 'semana' ? 'en los últimos 7 días' : `en ${meses[mes - 1]}`}
                 </span>
@@ -226,9 +240,21 @@ export default function AdminDashboard() {
                 style={{ gap: '0.5rem' }}
               >
                 <span className="text-overline">Ingresos Totales</span>
-                <span style={{ fontSize: '2.4rem', fontWeight: 700, color: '#16a34a', letterSpacing: '-0.03em' }}>
-                  ${data.totalIngresos}
-                </span>
+                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem' }}>
+                  <span style={{ fontSize: '2.4rem', fontWeight: 700, color: '#16a34a', letterSpacing: '-0.03em' }}>
+                    ${data.totalIngresos}
+                  </span>
+                  {data.semanaAnterior && data.semanaAnterior.ingresos > 0 && (
+                    <span style={{
+                      fontSize: '0.8rem', fontWeight: 600,
+                      color: data.totalIngresos >= data.semanaAnterior.ingresos ? '#16a34a' : '#dc2626',
+                      display: 'flex', alignItems: 'center', gap: '0.2rem',
+                    }}>
+                      {data.totalIngresos >= data.semanaAnterior.ingresos ? '↑' : '↓'}
+                      {Math.abs(((data.totalIngresos - data.semanaAnterior.ingresos) / data.semanaAnterior.ingresos) * 100).toFixed(0)}%
+                    </span>
+                  )}
+                </div>
                 <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
                   {data.totalCortes > 0 ? `Promedio $${(data.totalIngresos / data.totalCortes).toFixed(0)}/corte` : 'Sin actividad'}
                 </span>
@@ -258,8 +284,8 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          <div className="bento-grid" style={{ marginTop: '0' }}>
-            <div className="bento-col-12">
+          <div className="bento-grid" style={{ marginBottom: '1.5rem' }}>
+            <div className="bento-col-6">
               <motion.div className="bento-card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
                 style={{ flexDirection: 'row', alignItems: 'center', gap: '1.25rem' }}
               >
@@ -282,6 +308,51 @@ export default function AdminDashboard() {
                     {data.topServicio.total} realizad{data.topServicio.total !== 1 ? 'os' : 'o'} en este período
                   </div>
                 </div>
+              </motion.div>
+            </div>
+
+            <div className="bento-col-6">
+              <motion.div className="bento-card" initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}
+                style={{ gap: '1rem' }}
+              >
+                <span className="text-overline">Distribución de Servicios</span>
+                {data.distribucionServicios && data.distribucionServicios.length > 0 ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem', height: '140px' }}>
+                    <div style={{ width: '120px', height: '120px', flexShrink: 0 }}>
+                      <ResponsiveContainer>
+                        <PieChart>
+                          <Pie
+                            data={data.distribucionServicios}
+                            dataKey="total"
+                            nameKey="nombre"
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={32}
+                            outerRadius={52}
+                          >
+                            {data.distribucionServicios.map((_, i) => (
+                              <Cell key={i} fill={DONUT_COLORS[i % DONUT_COLORS.length]} />
+                            ))}
+                          </Pie>
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.3rem', overflow: 'hidden' }}>
+                      {data.distribucionServicios.slice(0, 4).map((s, i) => (
+                        <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem' }}>
+                          <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: DONUT_COLORS[i % DONUT_COLORS.length], flexShrink: 0 }} />
+                          <span style={{ color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.nombre}</span>
+                          <span style={{ color: 'var(--text-main)', fontWeight: 600, marginLeft: 'auto' }}>{s.total}</span>
+                        </div>
+                      ))}
+                      {data.distribucionServicios.length > 4 && (
+                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>+{data.distribucionServicios.length - 4} más</span>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>Sin datos</span>
+                )}
               </motion.div>
             </div>
           </div>

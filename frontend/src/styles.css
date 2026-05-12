@@ -678,6 +678,112 @@ select.input-field {
   }
 }
 
+/* ===================== */
+/* Login Page Animations */
+/* ===================== */
+
+@keyframes barberSpin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes borderPulse {
+  0%, 100% { border-color: rgba(111, 78, 55, 0.25); box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3), 0 0 0 0 rgba(111,78,55,0.05); }
+  50% { border-color: rgba(111, 78, 55, 0.5); box-shadow: 0 8px 40px rgba(0,0,0,0.4), 0 1px 3px rgba(0,0,0,0.3), 0 0 24px rgba(111,78,55,0.08); }
+}
+
+@keyframes sheen {
+  0% { transform: translateX(-200%) skewX(-15deg); }
+  50% { transform: translateX(200%) skewX(-15deg); }
+  100% { transform: translateX(200%) skewX(-15deg); }
+}
+
+@keyframes sparkle {
+  0%, 100% { opacity: 0; transform: scale(0) rotate(0deg); }
+  50% { opacity: 0.8; transform: scale(1) rotate(180deg); }
+}
+
+@keyframes bgStripes {
+  from { transform: translateX(0); }
+  to { transform: translateX(-40px); }
+}
+
+@keyframes floatDrift {
+  0%, 100% { transform: translate(0, 0); }
+  25% { transform: translate(10px, -15px); }
+  50% { transform: translate(-5px, -25px); }
+  75% { transform: translate(-15px, -10px); }
+}
+
+.login-sheen-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.login-sheen-btn::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 40%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+  animation: sheen 3s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ─── Static background icon drift (CSS-only, no JS) ─── */
+
+.bg-icon {
+  will-change: transform;
+}
+
+.bg-icon--far {
+  animation: bgDriftFar 20s ease-in-out infinite;
+}
+
+.bg-icon--mid {
+  animation: bgDriftMid 14s ease-in-out infinite;
+}
+
+.bg-icon--near {
+  animation: bgDriftNear 8s ease-in-out infinite;
+}
+
+@keyframes bgDriftFar {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  33% { transform: translate(8px, -14px) rotate(5deg); }
+  66% { transform: translate(-6px, -8px) rotate(-3deg); }
+}
+
+@keyframes bgDriftMid {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  25% { transform: translate(12px, -18px) rotate(30deg); }
+  50% { transform: translate(-8px, -24px) rotate(-15deg); }
+  75% { transform: translate(-14px, -6px) rotate(20deg); }
+}
+
+@keyframes bgDriftNear {
+  0%, 100% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  25% { transform: translate(14px, -12px) rotate(60deg) scale(1.08); }
+  50% { transform: translate(-10px, -20px) rotate(-30deg) scale(0.96); }
+  75% { transform: translate(-18px, -8px) rotate(40deg) scale(1.04); }
+}
+
+/* ─── Barber pole background spin ─── */
+
+.barber-pole-bg {
+  animation: barberSpin 60s linear infinite;
+  will-change: transform;
+}
+
+/* ─── Sparkle particles ─── */
+
+.sparkle-particle {
+  animation: sparkle 3s ease-in-out infinite;
+  will-change: transform, opacity;
+}
+
 /* Small beige cards for upcoming appointments */
 .cita-card-small {
   transition: all 0.2s ease !important;

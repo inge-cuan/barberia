@@ -12,6 +12,7 @@ import CajeroCorte from './components/CajeroCorte';
 import RecepcionistaServicios from './components/RecepcionistaServicios';
 import RegistrarCita from './components/RegistrarCita';
 import GestionCitas from './components/GestionCitas';
+import Inventario from './components/Inventario';
 
 function AnimatedRoutes({ sidebarCollapsed, setSidebarCollapsed }) {
   const location = useLocation();
@@ -29,6 +30,7 @@ function AnimatedRoutes({ sidebarCollapsed, setSidebarCollapsed }) {
           <Route path="servicios" element={<RecepcionistaServicios />} />
           <Route path="registrar-cita" element={<RegistrarCita />} />
           <Route path="gestion-citas" element={<GestionCitas />} />
+          <Route path="inventario" element={<Inventario />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

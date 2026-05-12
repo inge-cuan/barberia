@@ -1,10 +1,29 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
-import { CheckCircle, Clock, User as UserIcon, Scissors, Play, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { CheckCircle, Clock, User as UserIcon, Scissors, Play, ChevronLeft, ChevronRight, Calendar, Bell } from 'lucide-react';
 import PageTransition from './PageTransition';
 import EmptyState from './EmptyState';
+
+function playNotifSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1100, 1320].forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.frequency.value = freq;
+      osc.type = 'sine';
+      const t = ctx.currentTime + i * 0.12;
+      gain.gain.setValueAtTime(0.25, t);
+      gain.gain.exponentialRampToValueAtTime(0.01, t + 0.25);
+      osc.start(t);
+      osc.stop(t + 0.25);
+    });
+  } catch (_) {}
+}
 
 const badgeStyles = {
   pendiente: {
@@ -41,10 +60,57 @@ export default function GestionCitas() {
   const [statsData, setStatsData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
   const navigate = useNavigate();
+  const notifiedRef = useRef(new Set());
+
+  const checkProximas = useCallback(() => {
+    const now = new Date();
+    const nowMin = now.getHours() * 60 + now.getMinutes();
+
+    citas.forEach((c) => {
+      if (c.estado !== 'pendiente') return;
+      if (notifiedRef.current.has(c.id)) return;
+
+      const [h, m] = c.hora.split(':').map(Number);
+      const citaMin = h * 60 + m;
+      const diff = citaMin - nowMin;
+
+      if (diff >= 0 && diff <= 10) {
+        notifiedRef.current.add(c.id);
+        playNotifSound();
+        toast(
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+            <div style={{
+              width: '32px', height: '32px', borderRadius: '8px',
+              background: 'linear-gradient(135deg, #f59e0b, #d97706)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}>
+              <Bell size={16} color="#fff" />
+            </div>
+            <div>
+              <div style={{ fontWeight: 700, fontSize: '0.9rem', color: '#f59e0b' }}>
+                Cita próxima
+              </div>
+              <div style={{ fontSize: '0.85rem', marginTop: '0.1rem' }}>
+                {c.cliente_nombre}
+              </div>
+            </div>
+          </div>,
+          { duration: 6000 }
+        );
+      }
+    });
+  }, [citas]);
 
   useEffect(() => {
     fetchCitas();
   }, []);
+
+  useEffect(() => {
+    if (citas.length === 0) return;
+    checkProximas();
+    const interval = setInterval(checkProximas, 30000);
+    return () => clearInterval(interval);
+  }, [checkProximas]);
 
   const fetchCitas = async () => {
     try {

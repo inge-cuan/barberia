@@ -17,7 +17,7 @@ export default function FormDialog({ isOpen, onClose, title, children }) {
             transition={{ duration: 0.2 }}
             style={{
               position: "fixed", inset: 0,
-              background: "rgba(0,0,0,0.4)", backdropFilter: "blur(8px)",
+              background: "rgba(0,0,0,0.5)", backdropFilter: "blur(8px)",
             }}
             onClick={onClose}
           />
@@ -31,11 +31,13 @@ export default function FormDialog({ isOpen, onClose, title, children }) {
             onClick={(e) => e.stopPropagation()}
             style={{
               width: "min(100%, 560px)",
-              background: "var(--surface-color)",
-              border: "1px solid var(--border-color)",
-              borderRadius: "1.25rem",
+              background: "rgba(30,32,32,0.85)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              border: "1px solid rgba(111,78,55,0.25)",
+              borderRadius: "1.5rem",
               padding: "1.75rem",
-              boxShadow: "0 25px 80px rgba(0,0,0,0.15)",
+              boxShadow: "0 8px 48px rgba(0,0,0,0.5), 0 1px 3px rgba(0,0,0,0.3), inset 0 1px 0 rgba(255,255,255,0.04)",
               position: "relative",
               zIndex: 1,
             }}
@@ -50,6 +52,8 @@ export default function FormDialog({ isOpen, onClose, title, children }) {
                   color: "var(--text-muted)", fontSize: "1.1rem", lineHeight: 1,
                   transition: "all 0.2s",
                 }}
+                onMouseEnter={(e) => { e.currentTarget.style.borderColor = "#6f4e37"; e.currentTarget.style.color = "#6f4e37"; }}
+                onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-color)"; e.currentTarget.style.color = "var(--text-muted)"; }}
               >
                 ✕
               </button>

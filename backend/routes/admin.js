@@ -111,11 +111,41 @@ router.get('/graficas', requireAuth, requireAdmin, (req, res) => {
             GROUP BY c.servicio_id ORDER BY total DESC LIMIT 1
         `).get(startDate, endDate) || { nombre: 'N/A', total: 0 };
 
+        // Distribución de servicios (para gráfico de dona)
+        const distribucionServicios = db.prepare(`
+            SELECT s.nombre, COUNT(*) as total
+            FROM citas c JOIN servicios s ON c.servicio_id = s.id
+            WHERE c.estado = 'completada' AND c.fecha BETWEEN ? AND ?
+            GROUP BY c.servicio_id ORDER BY total DESC
+        `).all(startDate, endDate);
+
         // Totales del período
         const totalCortes = diario.reduce((s, d) => s + d.cortes, 0);
         const totalIngresos = diario.reduce((s, d) => s + d.ingresos, 0);
 
-        res.json({ diario, topBarbero, topServicio, totalCortes, totalIngresos, startDate, endDate });
+        // Comparativa con semana anterior
+        const weekAgoStart = new Date(startDate);
+        weekAgoStart.setDate(weekAgoStart.getDate() - 7);
+        const weekAgoEnd = new Date(startDate);
+        weekAgoEnd.setDate(weekAgoEnd.getDate() - 1);
+        const prevStart = weekAgoStart.toISOString().split('T')[0];
+        const prevEnd = weekAgoEnd.toISOString().split('T')[0];
+
+        const prevCortes = rango === 'semana' ? (db.prepare(`
+            SELECT COUNT(*) as total FROM citas WHERE estado = 'completada' AND fecha BETWEEN ? AND ?
+        `).get(prevStart, prevEnd)?.total || 0) : null;
+
+        const prevIngresos = rango === 'semana' ? (db.prepare(`
+            SELECT SUM(total) as total FROM ventas WHERE date(fecha) BETWEEN ? AND ?
+        `).get(prevStart, prevEnd)?.total || 0) : null;
+
+        res.json({
+            diario, topBarbero, topServicio,
+            distribucionServicios,
+            totalCortes, totalIngresos,
+            semanaAnterior: rango === 'semana' ? { cortes: prevCortes, ingresos: prevIngresos } : null,
+            startDate, endDate
+        });
     } catch (error) {
         res.status(500).json({ error: error.message });
     }
