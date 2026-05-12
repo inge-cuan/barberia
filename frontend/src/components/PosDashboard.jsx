@@ -270,24 +270,58 @@ export default function PosDashboard() {
 
       {ticketImprimir && (
         <div id="print-ticket" style={{ display: 'none' }}>
-          <h2 style={{ textAlign: 'center' }}>BARBER POS</h2>
-          <p style={{ textAlign: 'center', fontSize: '12px' }}>Fecha: {new Date(ticketImprimir.fecha).toLocaleString()}</p>
-          <p style={{ textAlign: 'center', fontSize: '12px' }}>Ticket: #{ticketImprimir.id}</p>
-          {ticketImprimir.cliente_nombre && <p style={{ textAlign: 'center', fontSize: '12px' }}>Cliente: {ticketImprimir.cliente_nombre}</p>}
-          <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
+          <div style={{ textAlign: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '2px solid #000' }}>
+            <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 2px', letterSpacing: '1px', fontFamily: 'serif' }}>BARBERÍA</h1>
+            <p style={{ fontSize: '10px', margin: '2px 0', color: '#555' }}>Corte y Estilo Profesional</p>
+            <p style={{ fontSize: '9px', margin: '2px 0', color: '#777' }}>Calle Principal #123 | Tel: 555-0123</p>
+          </div>
+
+          <div style={{ fontSize: '10px', marginBottom: '8px', color: '#333' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+              <span>Ticket #<strong>{ticketImprimir.id}</strong></span>
+              <span>{new Date(ticketImprimir.fecha).toLocaleDateString()}</span>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '2px' }}>
+              <span>Hora: {new Date(ticketImprimir.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              <span>Atendió: {ticketImprimir.barbero_nombre || '—'}</span>
+            </div>
+            {ticketImprimir.cliente_nombre && (
+              <div style={{ marginTop: '6px', padding: '4px 6px', background: '#f5f2ed', borderRadius: '3px' }}>
+                <span style={{ fontWeight: 600 }}>Cliente:</span> {ticketImprimir.cliente_nombre}
+              </div>
+            )}
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px dashed #999', margin: '8px 0' }} />
+
+          <div style={{ fontSize: '9px', color: '#888', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '4px' }}>Descripción</div>
           {ticketImprimir.items.map((it, idx) => (
-            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between' }}>
+            <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px', padding: '3px 0' }}>
               <span>{it.nombre}</span>
-              <span>${it.precio.toFixed(2)}</span>
+              <span style={{ fontWeight: 600 }}>${it.precio.toFixed(2)}</span>
             </div>
           ))}
-          <hr style={{ borderTop: '1px dashed #000', margin: '10px 0' }} />
-          <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold', fontSize: '18px' }}>
-            <span>TOTAL:</span>
+
+          <hr style={{ border: 'none', borderTop: '1px solid #000', margin: '8px 0' }} />
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '16px', fontWeight: 800, marginBottom: '6px' }}>
+            <span>TOTAL</span>
             <span>${ticketImprimir.total.toFixed(2)}</span>
           </div>
-          <p style={{ marginTop: '10px', fontSize: '12px' }}>Pago: {ticketImprimir.metodo}</p>
-          <p style={{ textAlign: 'center', marginTop: '20px' }}>¡Gracias por su visita!</p>
+
+          <div style={{ fontSize: '10px', color: '#666', marginBottom: '12px' }}>
+            <span>Forma de pago: <strong>{ticketImprimir.metodo}</strong></span>
+          </div>
+
+          <hr style={{ border: 'none', borderTop: '1px dashed #999', margin: '8px 0' }} />
+
+          <p style={{ textAlign: 'center', fontSize: '11px', margin: '4px 0', fontStyle: 'italic', color: '#555' }}>
+            ¡Gracias por su visita, vuelva pronto!
+          </p>
+
+          <div style={{ textAlign: 'center', fontSize: '8px', marginTop: '8px', paddingTop: '6px', borderTop: '1px dotted #ccc', color: '#aaa' }}>
+            Desarrollado por JRP
+          </div>
         </div>
       )}
     </PageTransition>

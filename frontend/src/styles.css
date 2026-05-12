@@ -879,11 +879,17 @@ select.input-field {
     position: absolute;
     left: 0;
     top: 0;
-    width: 80mm;
+    width: 76mm;
+    padding: 3mm 4mm;
     color: #000;
-    font-family: monospace;
-    font-size: 14px;
+    font-family: 'Courier New', Courier, monospace;
+    font-size: 12px;
+    line-height: 1.4;
     background: white;
+    box-sizing: border-box;
+  }
+  #print-ticket h1 {
+    font-family: 'Georgia', 'Times New Roman', serif !important;
   }
 }
 

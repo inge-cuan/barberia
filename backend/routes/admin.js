@@ -3,28 +3,38 @@ const router = express.Router();
 const db = require('../db');
 const { requireAuth, requireAdmin } = require('../middlewares/auth');
 const { logAudit } = require('../middlewares/audit');
+const { today, addDays, rangeArray } = require('../date-utils');
 
 // Dashboard: Utilidad Real y Métricas Dinámicas
 router.get('/dashboard', requireAuth, requireAdmin, (req, res) => {
     try {
         const { rango } = req.query; // 'hoy', 'semana', 'mes', 'todo'
-        let dateFilter = '';
-        
+        const hoy = today();
+        let dateFilter, params;
+
         if (rango === 'hoy') {
-            dateFilter = "WHERE date(fecha) = date('now', 'localtime')";
+            dateFilter = 'WHERE date(fecha) = ?';
+            params = [hoy];
         } else if (rango === 'semana') {
-            dateFilter = "WHERE date(fecha) >= date('now', '-7 days', 'localtime')";
+            const weekAgo = addDays(hoy, -6);
+            dateFilter = 'WHERE date(fecha) >= ?';
+            params = [weekAgo];
         } else if (rango === 'mes') {
-            dateFilter = "WHERE date(fecha) >= date('now', 'start of month', 'localtime')";
+            const monthStart = hoy.slice(0, 8) + '01';
+            dateFilter = 'WHERE date(fecha) >= ?';
+            params = [monthStart];
+        } else {
+            dateFilter = '';
+            params = [];
         }
 
         // Ingresos totales (Ventas)
-        const ventasResult = db.prepare(`SELECT SUM(total) as ingresos, COUNT(id) as total_cortes FROM ventas ${dateFilter}`).get();
+        const ventasResult = db.prepare(`SELECT SUM(total) as ingresos, COUNT(id) as total_cortes FROM ventas ${dateFilter}`).get(...params);
         const ingresos = ventasResult.ingresos || 0;
         const total_cortes = ventasResult.total_cortes || 0;
 
         // Gastos chicos
-        const gastosResult = db.prepare(`SELECT SUM(monto) as gastos FROM gastos_chicos ${dateFilter}`).get();
+        const gastosResult = db.prepare(`SELECT SUM(monto) as gastos FROM gastos_chicos ${dateFilter}`).get(...params);
         const gastos = gastosResult.gastos || 0;
 
         // Mejor Servicio (Más vendido en ese rango)
@@ -55,17 +65,15 @@ router.get('/graficas', requireAuth, requireAdmin, (req, res) => {
         const { rango, month, year } = req.query;
         let startDate, endDate;
 
-        const now = new Date();
+        const hoy = today();
         if (rango === 'semana') {
-            endDate = now.toISOString().split('T')[0];
-            const weekAgo = new Date(now);
-            weekAgo.setDate(weekAgo.getDate() - 6);
-            startDate = weekAgo.toISOString().split('T')[0];
+            endDate = hoy;
+            startDate = addDays(hoy, -6);
         } else {
-            const m = parseInt(month) || now.getMonth() + 1;
-            const y = parseInt(year) || now.getFullYear();
+            const m = parseInt(month) || parseInt(hoy.slice(5, 7));
+            const y = parseInt(year) || parseInt(hoy.slice(0, 4));
             startDate = `${y}-${String(m).padStart(2, '0')}-01`;
-            const lastDay = new Date(y, m, 0).getDate();
+            const lastDay = new Date(Date.UTC(y, m, 0)).getUTCDate();
             endDate = `${y}-${String(m).padStart(2, '0')}-${String(lastDay).padStart(2, '0')}`;
         }
 
@@ -87,10 +95,9 @@ router.get('/graficas', requireAuth, requireAdmin, (req, res) => {
 
         // Combinar datos diarios
         const fechas = {};
-        for (let d = new Date(startDate); d <= new Date(endDate); d.setDate(d.getDate() + 1)) {
-            const key = d.toISOString().split('T')[0];
+        rangeArray(startDate, endDate).forEach(key => {
             fechas[key] = { fecha: key, cortes: 0, ingresos: 0 };
-        }
+        });
         cortesDiarios.forEach(r => { if (fechas[r.fecha]) fechas[r.fecha].cortes = r.cortes; });
         ingresosDiarios.forEach(r => { if (fechas[r.fecha]) fechas[r.fecha].ingresos = r.ingresos; });
         const diario = Object.values(fechas);
@@ -124,12 +131,8 @@ router.get('/graficas', requireAuth, requireAdmin, (req, res) => {
         const totalIngresos = diario.reduce((s, d) => s + d.ingresos, 0);
 
         // Comparativa con semana anterior
-        const weekAgoStart = new Date(startDate);
-        weekAgoStart.setDate(weekAgoStart.getDate() - 7);
-        const weekAgoEnd = new Date(startDate);
-        weekAgoEnd.setDate(weekAgoEnd.getDate() - 1);
-        const prevStart = weekAgoStart.toISOString().split('T')[0];
-        const prevEnd = weekAgoEnd.toISOString().split('T')[0];
+        const prevStart = addDays(startDate, -7);
+        const prevEnd = addDays(startDate, -1);
 
         const prevCortes = rango === 'semana' ? (db.prepare(`
             SELECT COUNT(*) as total FROM citas WHERE estado = 'completada' AND fecha BETWEEN ? AND ?
@@ -326,7 +329,7 @@ router.get('/export', requireAuth, requireAdmin, (req, res) => {
 
         res.writeHead(200, {
             'Content-Type': 'application/zip',
-            'Content-disposition': `attachment; filename=backup_barberia_${new Date().toISOString().split('T')[0]}.zip`
+            'Content-disposition': `attachment; filename=backup_barberia_${new Date().toLocaleDateString('en-CA')}.zip`
         });
 
         const archive = archiver('zip', {

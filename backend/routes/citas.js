@@ -2,17 +2,19 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { requireAuth } = require('../middlewares/auth');
+const { today, nowMinutes } = require('../date-utils');
 
 // GET /api/citas/hoy — Citas de hoy ordenadas: en_turno primero, luego pendiente, luego completada
 router.get('/hoy', requireAuth, (req, res) => {
     try {
+        const hoy = today();
         const citas = db.prepare(`
             SELECT c.id, c.cliente_nombre, c.fecha, c.hora, c.estado, c.barbero_id, c.servicio_id,
                    u.nombre as barbero_nombre, s.nombre as servicio_nombre, s.precio as servicio_precio, s.duracion_minutos
             FROM citas c
             LEFT JOIN usuarios u ON c.barbero_id = u.id
             LEFT JOIN servicios s ON c.servicio_id = s.id
-            WHERE c.fecha = date('now', 'localtime') AND c.estado != 'cancelada'
+            WHERE c.fecha = ? AND c.estado != 'cancelada'
             ORDER BY
                 CASE c.estado
                     WHEN 'en_turno' THEN 0
@@ -20,7 +22,7 @@ router.get('/hoy', requireAuth, (req, res) => {
                     WHEN 'completada' THEN 2
                 END,
                 c.hora ASC
-        `).all();
+        `).all(hoy);
         res.json(citas);
     } catch (error) {
         res.status(500).json({ error: error.message });
@@ -108,9 +110,8 @@ router.get('/disponibilidad', requireAuth, (req, res) => {
             allSlots.push(formatTime(m));
         }
 
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+        const hoy = today();
+        const currentMinutes = nowMinutes();
 
         // Filter available slots
         const available = [];
@@ -120,7 +121,7 @@ router.get('/disponibilidad', requireAuth, (req, res) => {
             const slotMin = toMinutes(slot);
 
             // Skip past hours if today
-            if (fecha === today && slotMin <= currentMinutes) {
+            if (fecha === hoy && slotMin <= currentMinutes) {
                 occupied.push(slot);
                 return;
             }
