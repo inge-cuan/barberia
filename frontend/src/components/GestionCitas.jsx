@@ -6,6 +6,18 @@ import { CheckCircle, Clock, User as UserIcon, Scissors, Play, ChevronLeft, Chev
 import PageTransition from './PageTransition';
 import EmptyState from './EmptyState';
 
+const MERIDA_TZ = 'America/Merida';
+
+function meridaNowMinutes() {
+  const f = new Intl.DateTimeFormat('en-US', { timeZone: MERIDA_TZ, hour: '2-digit', minute: '2-digit', hour12: false });
+  const [h, m] = f.format(new Date()).split(':').map(Number);
+  return h * 60 + m;
+}
+
+function meridaToday() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: MERIDA_TZ, year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date());
+}
+
 function playNotifSound() {
   try {
     const ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -54,8 +66,14 @@ export default function GestionCitas() {
   const [loading, setLoading] = useState(true);
   const [accionando, setAccionando] = useState(null);
   const [showCalendar, setShowCalendar] = useState(false);
-  const [calViewMonth, setCalViewMonth] = useState(new Date().getMonth());
-  const [calViewYear, setCalViewYear] = useState(new Date().getFullYear());
+  const [calViewMonth, setCalViewMonth] = useState(() => {
+    const parts = meridaToday().split('-');
+    return parseInt(parts[1], 10) - 1;
+  });
+  const [calViewYear, setCalViewYear] = useState(() => {
+    const parts = meridaToday().split('-');
+    return parseInt(parts[0], 10);
+  });
   const [selectedStatsDate, setSelectedStatsDate] = useState(null);
   const [statsData, setStatsData] = useState(null);
   const [loadingStats, setLoadingStats] = useState(false);
@@ -63,8 +81,7 @@ export default function GestionCitas() {
   const notifiedRef = useRef(new Set());
 
   const checkProximas = useCallback(() => {
-    const now = new Date();
-    const nowMin = now.getHours() * 60 + now.getMinutes();
+    const nowMin = meridaNowMinutes();
 
     citas.forEach((c) => {
       if (c.estado !== 'pendiente') return;
@@ -200,7 +217,7 @@ export default function GestionCitas() {
     return h * 60 + m;
   };
 
-  const ahoraMin = new Date().getHours() * 60 + new Date().getMinutes();
+  const ahoraMin = meridaNowMinutes();
 
   const isLate = (hora) => {
     const citaMin = toMin(hora);
@@ -227,8 +244,7 @@ export default function GestionCitas() {
   const citaActiva = enTurno || pendientes[0];
   const siguientes = (enTurno ? pendientes : pendientes.slice(1)).filter(c => esProxima(c.hora));
 
-  const today = new Date();
-  const dateStr = today.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  const dateStr = new Intl.DateTimeFormat('es-ES', { timeZone: MERIDA_TZ, weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }).format(new Date());
   const totalPendientes = pendientes.length;
 
   const renderBadge = (estado) => {
@@ -290,8 +306,9 @@ export default function GestionCitas() {
                 whileTap={{ scale: 0.98 }}
                 onClick={() => {
                   setShowCalendar(true);
-                  setCalViewMonth(new Date().getMonth());
-                  setCalViewYear(new Date().getFullYear());
+                  const td = meridaToday().split('-');
+                  setCalViewMonth(parseInt(td[1], 10) - 1);
+                  setCalViewYear(parseInt(td[0], 10));
                   setSelectedStatsDate(null);
                   setStatsData(null);
                 }}
@@ -362,9 +379,8 @@ export default function GestionCitas() {
                     for (let d = 1; d <= daysInMonth; d++) {
                       const dateObj = new Date(calViewYear, calViewMonth, d);
                       const dateStr = dateObj.toISOString().split('T')[0];
-                      const isToday = dateObj.toDateString() === new Date().toDateString();
-                      const isSelected = selectedStatsDate === dateStr;
-                      const isFuture = dateObj >= new Date(new Date().toDateString());
+                      const isToday = dateStr === meridaToday();
+                      const isFuture = dateStr >= meridaToday();
                       cells.push(
                         <motion.button key={d} type="button"
                           whileHover={isFuture ? { scale: 1.08 } : {}}

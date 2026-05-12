@@ -329,7 +329,7 @@ router.get('/export', requireAuth, requireAdmin, (req, res) => {
 
         res.writeHead(200, {
             'Content-Type': 'application/zip',
-            'Content-disposition': `attachment; filename=backup_barberia_${new Date().toLocaleDateString('en-CA')}.zip`
+            'Content-disposition': `attachment; filename=backup_barberia_${today()}.zip`
         });
 
         const archive = archiver('zip', {
