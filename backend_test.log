@@ -1,3 +1,5 @@
+◇ injected env (0) from .env // tip: ◈ secrets for agents [www.dotenvx.com]
+PRAGMA foreign_keys = ON
 -- Crear tabla usuarios
 CREATE TABLE IF NOT EXISTS usuarios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -7,7 +9,6 @@ CREATE TABLE IF NOT EXISTS usuarios (
     telefono TEXT DEFAULT '',
     rol TEXT NOT NULL CHECK(rol IN ('admin', 'recepcionista', 'barbero'))
 );
-
 -- Crear tabla clientes
 CREATE TABLE IF NOT EXISTS clientes (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -17,7 +18,6 @@ CREATE TABLE IF NOT EXISTS clientes (
     ultima_visita DATETIME,
     fecha_registro DATETIME DEFAULT CURRENT_TIMESTAMP
 );
-
 -- Crear tabla servicios
 CREATE TABLE IF NOT EXISTS servicios (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +27,6 @@ CREATE TABLE IF NOT EXISTS servicios (
     costo_insumos REAL DEFAULT 0,
     imagen_url TEXT
 );
-
 -- Crear tabla inventario
 CREATE TABLE IF NOT EXISTS inventario (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -36,7 +35,6 @@ CREATE TABLE IF NOT EXISTS inventario (
     precio_venta REAL DEFAULT 0,
     imagen_url TEXT DEFAULT ''
 );
-
 -- Crear tabla venta_productos (productos vendidos en una venta)
 CREATE TABLE IF NOT EXISTS venta_productos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -47,7 +45,6 @@ CREATE TABLE IF NOT EXISTS venta_productos (
     FOREIGN KEY (venta_id) REFERENCES ventas(id),
     FOREIGN KEY (producto_id) REFERENCES inventario(id)
 );
-
 -- Crear tabla servicio_insumos
 CREATE TABLE IF NOT EXISTS servicio_insumos (
     servicio_id INTEGER,
@@ -57,7 +54,6 @@ CREATE TABLE IF NOT EXISTS servicio_insumos (
     FOREIGN KEY (producto_id) REFERENCES inventario(id),
     PRIMARY KEY (servicio_id, producto_id)
 );
-
 -- Crear tabla cajas (Turnos)
 CREATE TABLE IF NOT EXISTS cajas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -70,7 +66,6 @@ CREATE TABLE IF NOT EXISTS cajas (
     estado TEXT DEFAULT 'abierta' CHECK(estado IN ('abierta', 'cerrada')),
     FOREIGN KEY (recepcionista_id) REFERENCES usuarios(id)
 );
-
 -- Crear tabla ventas (Tickets)
 CREATE TABLE IF NOT EXISTS ventas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -84,7 +79,6 @@ CREATE TABLE IF NOT EXISTS ventas (
     FOREIGN KEY (barbero_id) REFERENCES usuarios(id),
     FOREIGN KEY (caja_id) REFERENCES cajas(id)
 );
-
 -- Crear tabla gastos_chicos
 CREATE TABLE IF NOT EXISTS gastos_chicos (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -94,7 +88,6 @@ CREATE TABLE IF NOT EXISTS gastos_chicos (
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (caja_id) REFERENCES cajas(id)
 );
-
 -- Crear tabla clientes_galeria
 CREATE TABLE IF NOT EXISTS clientes_galeria (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -103,7 +96,6 @@ CREATE TABLE IF NOT EXISTS clientes_galeria (
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (cliente_id) REFERENCES clientes(id)
 );
-
 -- Crear tabla auditoria_log
 CREATE TABLE IF NOT EXISTS auditoria_log (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -113,7 +105,6 @@ CREATE TABLE IF NOT EXISTS auditoria_log (
     fecha DATETIME DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (usuario_id) REFERENCES usuarios(id)
 );
-
 -- Crear tabla citas
 CREATE TABLE IF NOT EXISTS citas (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -131,29 +122,27 @@ CREATE TABLE IF NOT EXISTS citas (
     FOREIGN KEY (venta_id) REFERENCES ventas(id),
     FOREIGN KEY (creado_por) REFERENCES usuarios(id)
 );
-
--- Tabla de comisiones por barbero
-CREATE TABLE IF NOT EXISTS barbero_comision (
-    barbero_id INTEGER PRIMARY KEY,
-    porcentaje REAL NOT NULL DEFAULT 50,
-    FOREIGN KEY (barbero_id) REFERENCES usuarios(id) ON DELETE CASCADE
-);
-
--- Tabla de pagos a barberos
-CREATE TABLE IF NOT EXISTS pagos_barbero (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    barbero_id INTEGER NOT NULL,
-    monto REAL NOT NULL,
-    semana_inicio DATE NOT NULL,
-    semana_fin DATE NOT NULL,
-    estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'pagado', 'cancelado')),
-    registrado_por INTEGER NOT NULL,
-    fecha_pago DATETIME,
-    notas TEXT DEFAULT '',
-    FOREIGN KEY (barbero_id) REFERENCES usuarios(id),
-    FOREIGN KEY (registrado_por) REFERENCES usuarios(id)
-);
-
 -- Insertar datos por defecto (Admin)
 INSERT OR IGNORE INTO usuarios (id, nombre, username, password, rol) 
 VALUES (1, 'Administrador', 'admin', 'admin123', 'admin');
+SELECT sql FROM sqlite_master WHERE type='table' AND name='citas'
+CREATE TABLE IF NOT EXISTS venta_productos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            venta_id INTEGER NOT NULL,
+            producto_id INTEGER NOT NULL,
+            cantidad INTEGER NOT NULL DEFAULT 1,
+            precio_unitario REAL NOT NULL,
+            FOREIGN KEY (venta_id) REFERENCES ventas(id),
+            FOREIGN KEY (producto_id) REFERENCES inventario(id)
+        )
+    
+CREATE TABLE IF NOT EXISTS configuracion (
+            clave TEXT PRIMARY KEY,
+            valor TEXT NOT NULL DEFAULT ''
+        )
+    
+INSERT OR IGNORE INTO configuracion (clave, valor) VALUES ('nombre_barberia', 'Barbería')
+INSERT OR IGNORE INTO configuracion (clave, valor) VALUES ('direccion', 'Calle Principal #123')
+INSERT OR IGNORE INTO configuracion (clave, valor) VALUES ('telefono', '555-0123')
+INSERT OR IGNORE INTO configuracion (clave, valor) VALUES ('logo_url', '')
+Servidor corriendo en el puerto 3000

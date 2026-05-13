@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Scissors, Star, Sparkles, Wind, Zap } from 'lucide-react';
@@ -245,7 +245,19 @@ export default function Login() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [barberiaNombre, setBarberiaNombre] = useState('');
+  const [barberiaLogoUrl, setBarberiaLogoUrl] = useState('');
   const navigate = useNavigate();
+
+  useEffect(() => {
+    fetch('http://localhost:3000/api/configuracion')
+      .then(r => r.json())
+      .then(data => {
+        if (data.nombre_barberia) setBarberiaNombre(data.nombre_barberia);
+        if (data.logo_url) setBarberiaLogoUrl(data.logo_url);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -430,24 +442,36 @@ export default function Login() {
         {/* ── Header ── */}
         <div style={{ textAlign: 'center', marginBottom: '2rem' }}>
           <motion.div
-            animate={{ rotate: [0, 12, 0, -12, 0] }}
+            animate={barberiaLogoUrl ? {} : { rotate: [0, 12, 0, -12, 0] }}
             transition={{ duration: 4, repeat: Infinity, ease: 'easeInOut' }}
             style={{
               width: '68px', height: '68px', borderRadius: '20px',
-              background: 'linear-gradient(135deg, #6f4e37, #8a6344)',
+              background: barberiaLogoUrl ? 'transparent' : 'linear-gradient(135deg, #6f4e37, #8a6344)',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               margin: '0 auto',
-              boxShadow: '0 8px 32px rgba(111,78,55,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
+              boxShadow: barberiaLogoUrl ? 'none' : '0 8px 32px rgba(111,78,55,0.45), inset 0 1px 0 rgba(255,255,255,0.1)',
               position: 'relative',
             }}
           >
-            <Scissors size={34} color="#fff" />
+            {barberiaLogoUrl ? (
+              <img src={barberiaLogoUrl} alt="Logo" style={{ maxWidth: '68px', maxHeight: '68px', borderRadius: '12px', objectFit: 'contain' }} />
+            ) : (
+              <Scissors size={34} color="#fff" />
+            )}
             <div style={{
               position: 'absolute', inset: -3, borderRadius: '22px',
               background: 'linear-gradient(135deg, rgba(111,78,55,0.4), transparent)',
               zIndex: -1, filter: 'blur(10px)',
             }} />
           </motion.div>
+          {barberiaNombre && (
+            <h1 style={{
+              margin: '0.75rem 0 0', fontSize: '1.6rem', fontWeight: 700,
+              color: 'var(--text-main)', fontFamily: 'var(--font-heading)',
+            }}>
+              {barberiaNombre}
+            </h1>
+          )}
         </div>
 
         {/* ── Form ── */}

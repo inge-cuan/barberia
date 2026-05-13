@@ -318,8 +318,184 @@ router.delete('/usuarios/:id', requireAuth, (req, res) => {
     }
 });
 
+// ==================== COMISIONES Y PAGOS DE BARBEROS ====================
+
+// GET /api/admin/barberos/comision — Admin: lista barberos con su % de comisión
+router.get('/barberos/comision', requireAuth, requireAdmin, (req, res) => {
+    try {
+        const barberos = db.prepare(`
+            SELECT u.id, u.nombre, u.telefono,
+                   COALESCE(bc.porcentaje, 50) as porcentaje
+            FROM usuarios u
+            LEFT JOIN barbero_comision bc ON bc.barbero_id = u.id
+            WHERE u.rol = 'barbero'
+            ORDER BY u.nombre
+        `).all();
+        res.json(barberos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT /api/admin/barberos/:id/comision — Admin: actualiza % de comisión
+router.put('/barberos/:id/comision', requireAuth, requireAdmin, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { porcentaje } = req.body;
+
+        if (porcentaje === undefined || porcentaje < 0 || porcentaje > 100) {
+            return res.status(400).json({ error: 'El porcentaje debe estar entre 0 y 100.' });
+        }
+
+        const barbero = db.prepare('SELECT id FROM usuarios WHERE id = ? AND rol = ?').get(id, 'barbero');
+        if (!barbero) {
+            return res.status(404).json({ error: 'Barbero no encontrado.' });
+        }
+
+        db.prepare(`
+            INSERT INTO barbero_comision (barbero_id, porcentaje) VALUES (?, ?)
+            ON CONFLICT(barbero_id) DO UPDATE SET porcentaje = ?
+        `).run(id, porcentaje, porcentaje);
+
+        logAudit(req.user.id, 'Configurar Comisión', `Comisión del barbero ID ${id} actualizada a ${porcentaje}%`);
+        res.json({ mensaje: 'Comisión actualizada', porcentaje });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin/barberos/ganancias — Calcula ganancias por barbero en rango de fechas
+router.get('/barberos/ganancias', requireAuth, (req, res) => {
+    try {
+        const { desde, hasta } = req.query;
+        if (!desde || !hasta) {
+            return res.status(400).json({ error: 'Parámetros desde y hasta son requeridos (YYYY-MM-DD).' });
+        }
+
+        const ganancias = db.prepare(`
+            SELECT
+                u.id,
+                u.nombre,
+                COUNT(v.id) as servicios,
+                COALESCE(SUM(v.total), 0) as total_ventas,
+                COALESCE(bc.porcentaje, 50) as porcentaje,
+                ROUND(COALESCE(SUM(v.total), 0) * (COALESCE(bc.porcentaje, 50) / 100.0), 2) as comision
+            FROM usuarios u
+            LEFT JOIN ventas v ON v.barbero_id = u.id AND date(v.fecha) BETWEEN ? AND ?
+            LEFT JOIN barbero_comision bc ON bc.barbero_id = u.id
+            WHERE u.rol = 'barbero'
+            GROUP BY u.id
+            ORDER BY u.nombre
+        `).all(desde, hasta);
+
+        // Get already paid amounts for each barber in this period
+        const pagado = db.prepare(`
+            SELECT barbero_id, COALESCE(SUM(monto), 0) as total_pagado
+            FROM pagos_barbero
+            WHERE estado = 'pagado' AND semana_inicio >= ? AND semana_fin <= ?
+            GROUP BY barbero_id
+        `).all(desde, hasta);
+
+        const pagadoMap = {};
+        pagado.forEach(p => { pagadoMap[p.barbero_id] = p.total_pagado; });
+
+        const result = ganancias.map(g => ({
+            ...g,
+            total_pagado: pagadoMap[g.id] || 0,
+            pendiente: Math.max(0, g.comision - (pagadoMap[g.id] || 0))
+        }));
+
+        res.json(result);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// GET /api/admin/pagos — Lista historial de pagos
+router.get('/pagos', requireAuth, (req, res) => {
+    try {
+        let pagos;
+        if (req.user.rol === 'admin') {
+            pagos = db.prepare(`
+                SELECT p.id, p.barbero_id, u.nombre as barbero_nombre,
+                       p.monto, p.semana_inicio, p.semana_fin,
+                       p.estado, p.fecha_pago, p.notas,
+                       r.nombre as registrado_por_nombre
+                FROM pagos_barbero p
+                JOIN usuarios u ON u.id = p.barbero_id
+                LEFT JOIN usuarios r ON r.id = p.registrado_por
+                ORDER BY p.id DESC
+            `).all();
+        } else {
+            return res.status(403).json({ error: 'Acceso denegado.' });
+        }
+        res.json(pagos);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// POST /api/admin/pagos — Registra un pago a un barbero
+router.post('/pagos', requireAuth, (req, res) => {
+    try {
+        const { barbero_id, monto, semana_inicio, semana_fin, notas } = req.body;
+
+        if (!barbero_id || !monto || !semana_inicio || !semana_fin) {
+            return res.status(400).json({ error: 'Faltan campos requeridos: barbero_id, monto, semana_inicio, semana_fin.' });
+        }
+
+        const barbero = db.prepare('SELECT id FROM usuarios WHERE id = ? AND rol = ?').get(barbero_id, 'barbero');
+        if (!barbero) {
+            return res.status(404).json({ error: 'Barbero no encontrado.' });
+        }
+
+        const info = db.prepare(`
+            INSERT INTO pagos_barbero (barbero_id, monto, semana_inicio, semana_fin, estado, registrado_por, fecha_pago, notas)
+            VALUES (?, ?, ?, ?, 'pagado', ?, datetime('now', 'localtime'), ?)
+        `).run(barbero_id, monto, semana_inicio, semana_fin, req.user.id, notas || '');
+
+        logAudit(req.user.id, 'Registrar Pago', `Pago de $${monto} a barbero ID ${barbero_id} (semana ${semana_inicio} a ${semana_fin})`);
+        res.status(201).json({ mensaje: 'Pago registrado', id: info.lastInsertRowid });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// PUT /api/admin/pagos/:id — Admin: cancela/confirma un pago
+router.put('/pagos/:id', requireAuth, requireAdmin, (req, res) => {
+    try {
+        const { id } = req.params;
+        const { estado } = req.body;
+
+        if (!['pendiente', 'pagado', 'cancelado'].includes(estado)) {
+            return res.status(400).json({ error: 'Estado inválido. Use: pendiente, pagado, cancelado.' });
+        }
+
+        const existing = db.prepare('SELECT id, estado FROM pagos_barbero WHERE id = ?').get(id);
+        if (!existing) {
+            return res.status(404).json({ error: 'Pago no encontrado.' });
+        }
+
+        if (estado === 'pagado' && existing.estado !== 'pagado') {
+            db.prepare("UPDATE pagos_barbero SET estado = ?, fecha_pago = datetime('now', 'localtime') WHERE id = ?").run(estado, id);
+        } else {
+            db.prepare('UPDATE pagos_barbero SET estado = ? WHERE id = ?').run(estado, id);
+        }
+
+        logAudit(req.user.id, 'Actualizar Pago', `Pago ID ${id} cambiado a ${estado}`);
+        res.json({ mensaje: 'Pago actualizado' });
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
+});
+
 const archiver = require('archiver');
+const AdmZip = require('adm-zip');
 const { Parser } = require('json2csv');
+const { Readable } = require('stream');
+const multer = require('multer');
+
+const uploadZip = multer({ storage: multer.memoryStorage(), limits: { fileSize: 50 * 1024 * 1024 } }).single('backup');
 
 router.get('/export', requireAuth, requireAdmin, (req, res) => {
     try {
@@ -366,5 +542,92 @@ router.get('/export', requireAuth, requireAdmin, (req, res) => {
         }
     }
 });
+
+// POST /api/admin/restore — Restore database from uploaded ZIP
+router.post('/restore', requireAuth, requireAdmin, (req, res) => {
+  uploadZip(req, res, async (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: 'No se subió ningún archivo' });
+
+    try {
+      const zip = new AdmZip(req.file.buffer);
+      const entries = zip.getEntries();
+
+      const tables = db.prepare("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'").all().map(t => t.name);
+
+      const insertStmts = {};
+
+      for (const entry of entries) {
+        if (!entry.name.endsWith('.csv') || entry.isDirectory) continue;
+        const tableName = entry.name.replace('.csv', '');
+
+        if (!tables.includes(tableName)) {
+          console.warn(`Tabla "${tableName}" no existe, saltando.`);
+          continue;
+        }
+
+        const csvContent = entry.getData().toString('utf-8').trim();
+        if (!csvContent) continue;
+
+        const lines = csvContent.split('\n');
+        if (lines.length < 2) continue;
+
+        const headers = parseCSVLine(lines[0]);
+        const placeholders = headers.map(() => '?').join(', ');
+        const columns = headers.join(', ');
+
+        if (!insertStmts[tableName]) {
+          insertStmts[tableName] = db.prepare(`INSERT OR REPLACE INTO ${tableName} (${columns}) VALUES (${placeholders})`);
+        }
+
+        const transaction = db.transaction(() => {
+          db.prepare(`DELETE FROM ${tableName}`).run();
+          for (let i = 1; i < lines.length; i++) {
+            const values = parseCSVLine(lines[i]);
+            if (values.length !== headers.length) continue;
+            const parsed = values.map(v => {
+              if (v === '' || v === 'NULL' || v === 'null') return null;
+              const num = Number(v);
+              if (!isNaN(num) && v.trim() !== '') return num;
+              return v;
+            });
+            try {
+              insertStmts[tableName].run(...parsed);
+            } catch (e) {
+              console.warn(`Error insertando en ${tableName}: ${e.message}`);
+            }
+          }
+        });
+
+        transaction();
+      }
+
+      logAudit(req.user.id, 'Restaurar Base de Datos', 'Base de datos restaurada desde archivo ZIP.');
+      res.json({ mensaje: 'Base de datos restaurada correctamente' });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+});
+
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (ch === '"') {
+      if (inQuotes && line[i + 1] === '"') { current += '"'; i++; }
+      else inQuotes = !inQuotes;
+    } else if (ch === ',' && !inQuotes) {
+      result.push(current);
+      current = '';
+    } else {
+      current += ch;
+    }
+  }
+  result.push(current);
+  return result;
+}
 
 module.exports = router;

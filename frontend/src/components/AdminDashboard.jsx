@@ -42,7 +42,7 @@ export default function AdminDashboard() {
   const [anio] = useState(now.getFullYear());
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [exporting, setExporting] = useState(false);
+
 
   useEffect(() => {
     fetchGraficas();
@@ -67,30 +67,6 @@ export default function AdminDashboard() {
     }
   };
 
-  const handleExportDB = async () => {
-    setExporting(true);
-    try {
-      const token = localStorage.getItem('token');
-      const res = await fetch(`${BASE}/api/admin/export`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!res.ok) throw new Error('Error al crear copia de seguridad');
-      const blob = await res.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `backup_barberia_${new Date().toISOString().split('T')[0]}.zip`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(url);
-    } catch (error) {
-      toast(error.message, 'error');
-    } finally {
-      setExporting(false);
-    }
-  };
-
   const formatDate = (f) => {
     const d = new Date(f + 'T12:00');
     if (rango === 'semana') {
@@ -108,21 +84,6 @@ export default function AdminDashboard() {
             Bienvenido, {user?.nombre || user?.username}
           </p>
         </div>
-        <motion.button
-          whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-          onClick={handleExportDB} disabled={exporting}
-          style={{
-            padding: '0.6rem 1.2rem', borderRadius: '999px', border: '1px solid var(--border-color)',
-            background: 'var(--surface-color)', color: 'var(--text-main)', fontWeight: 600, fontSize: '0.85rem',
-            cursor: exporting ? 'not-allowed' : 'pointer', opacity: exporting ? 0.7 : 1,
-            display: 'flex', alignItems: 'center', gap: '0.5rem',
-          }}
-        >
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" y1="15" x2="12" y2="3" />
-          </svg>
-          {exporting ? 'Generando...' : 'Copia de Seguridad'}
-        </motion.button>
       </div>
 
       <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1.5rem', flexWrap: 'wrap', alignItems: 'center' }}>

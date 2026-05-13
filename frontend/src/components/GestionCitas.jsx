@@ -380,21 +380,19 @@ export default function GestionCitas() {
                       const dateObj = new Date(calViewYear, calViewMonth, d);
                       const dateStr = dateObj.toISOString().split('T')[0];
                       const isToday = dateStr === meridaToday();
-                      const isFuture = dateStr >= meridaToday();
+                      const isSelected = dateStr === selectedStatsDate;
                       cells.push(
                         <motion.button key={d} type="button"
-                          whileHover={isFuture ? { scale: 1.08 } : {}}
-                          whileTap={isFuture ? { scale: 0.95 } : {}}
-                          onClick={() => isFuture && fetchStats(dateStr)}
-                          disabled={!isFuture}
+                          whileHover={{ scale: 1.08 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => fetchStats(dateStr)}
                           style={{
                             padding: '0.55rem 0', borderRadius: '10px',
                             border: isSelected ? '2px solid var(--accent-primary)' : isToday ? '2px solid var(--accent-primary)' : 'none',
                             background: isSelected ? 'linear-gradient(135deg, #6f4e37, #8a6344)' : isToday ? 'rgba(111,78,55,0.12)' : 'transparent',
-                            color: isSelected ? '#fff' : isToday ? 'var(--accent-primary)' : isFuture ? 'var(--text-main)' : 'var(--text-muted)',
+                            color: isSelected ? '#fff' : isToday ? 'var(--accent-primary)' : 'var(--text-main)',
                             fontWeight: isSelected || isToday ? 700 : 500,
-                            fontSize: '0.85rem', cursor: isFuture ? 'pointer' : 'default',
-                            opacity: isFuture ? 1 : 0.35,
+                            fontSize: '0.85rem', cursor: 'pointer',
                             transition: 'all 0.15s',
                           }}
                         >{d}</motion.button>

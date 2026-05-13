@@ -4,6 +4,7 @@ import { motion } from 'framer-motion';
 import { DollarSign, Banknote, CreditCard, Smartphone, AlertCircle, Receipt, ArrowRight, CheckCircle } from 'lucide-react';
 import { useToast } from '../contexts/ToastContext';
 import PageTransition from './PageTransition';
+import ConfirmDialog from './ConfirmDialog';
 
 export default function CajeroCorte() {
   const { user } = useOutletContext();
@@ -13,6 +14,7 @@ export default function CajeroCorte() {
   const [montoReal, setMontoReal] = useState('');
   const [montoInicialForm, setMontoInicialForm] = useState('');
   const [cerrando, setCerrando] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
 
   useEffect(() => {
     fetchResumen();
@@ -59,7 +61,11 @@ export default function CajeroCorte() {
 
   const handleCerrarCaja = async (e) => {
     e.preventDefault();
-    if (!window.confirm('¿Estás seguro de cerrar la caja actual?')) return;
+    setShowConfirm(true);
+  };
+
+  const confirmCerrarCaja = async () => {
+    setShowConfirm(false);
     setCerrando(true);
     try {
       const token = localStorage.getItem('token');
@@ -135,11 +141,10 @@ export default function CajeroCorte() {
             transition={{ duration: 0.5, ease: [0.25, 0.8, 0.25, 1] }}
             style={{
               maxWidth: '420px', width: '100%', padding: '2.5rem',
-              background: 'rgba(30,32,32,0.7)', backdropFilter: 'blur(20px)',
-              WebkitBackdropFilter: 'blur(20px)',
+              background: 'var(--surface-color)',
               borderRadius: '1.75rem',
-              border: '1px solid rgba(111,78,55,0.25)',
-              boxShadow: '0 8px 48px rgba(0,0,0,0.5)',
+              border: '1px solid var(--border-color)',
+              boxShadow: 'var(--shadow-elevated)',
               textAlign: 'center',
             }}
           >
@@ -213,12 +218,9 @@ export default function CajeroCorte() {
 
       <div className="bento-grid">
         {/* Left card: Resumen del Sistema */}
-        <div className="bento-col-6" style={{
-          background: 'rgba(30,32,32,0.7)', backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderRadius: '1.5rem', padding: '1.75rem',
-          border: '1px solid var(--border-color)',
-          boxShadow: 'var(--shadow-card)',
+        <div className="bento-card" style={{
+          gridColumn: 'span 6',
+          padding: '1.75rem',
           display: 'flex', flexDirection: 'column', gap: '1rem',
         }}>
           <div style={{
@@ -263,12 +265,10 @@ export default function CajeroCorte() {
         </div>
 
         {/* Right card: Ejecutar Corte Físico */}
-        <div className="bento-col-6" style={{
-          background: 'rgba(30,32,32,0.7)', backdropFilter: 'blur(16px)',
-          WebkitBackdropFilter: 'blur(16px)',
-          borderRadius: '1.5rem', padding: '1.75rem',
+        <div className="bento-card" style={{
+          gridColumn: 'span 6',
+          padding: '1.75rem',
           border: '1px solid rgba(111,78,55,0.35)',
-          boxShadow: '0 4px 24px rgba(111,78,55,0.08), var(--shadow-card)',
           display: 'flex', flexDirection: 'column', gap: '1rem',
         }}>
           <div style={{
@@ -372,6 +372,16 @@ export default function CajeroCorte() {
           </form>
         </div>
       </div>
+
+      <ConfirmDialog
+        isOpen={showConfirm}
+        onClose={() => setShowConfirm(false)}
+        onConfirm={confirmCerrarCaja}
+        title="¿Cerrar Caja?"
+        message="Estás a punto de cerrar la caja actual. Asegúrate de haber contado el efectivo real en tu cajón. Esta acción no se puede deshacer."
+        confirmText="Cerrar Caja"
+        destructive={false}
+      />
     </PageTransition>
   );
 }

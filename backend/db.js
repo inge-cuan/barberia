@@ -112,4 +112,60 @@ try {
     // Migration already applied or not needed
 }
 
+// Migration: create configuracion table
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS configuracion (
+            clave TEXT PRIMARY KEY,
+            valor TEXT NOT NULL DEFAULT ''
+        )
+    `);
+    // Seed default values
+    const insert = db.prepare('INSERT OR IGNORE INTO configuracion (clave, valor) VALUES (?, ?)');
+    insert.run('nombre_barberia', 'Barbería');
+    insert.run('direccion', 'Calle Principal #123');
+    insert.run('telefono', '555-0123');
+    insert.run('logo_url', '');
+} catch {
+    // Table already exists
+}
+
+// Migration: create barbero_comision and pagos_barbero tables
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS barbero_comision (
+            barbero_id INTEGER PRIMARY KEY,
+            porcentaje REAL NOT NULL DEFAULT 50,
+            FOREIGN KEY (barbero_id) REFERENCES usuarios(id) ON DELETE CASCADE
+        )
+    `);
+    // Auto-assign default 50% commission to all existing barbers without one
+    db.prepare(`
+        INSERT OR IGNORE INTO barbero_comision (barbero_id, porcentaje)
+        SELECT id, 50 FROM usuarios WHERE rol = 'barbero'
+    `).run();
+} catch {
+    // Table already exists
+}
+
+try {
+    db.exec(`
+        CREATE TABLE IF NOT EXISTS pagos_barbero (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            barbero_id INTEGER NOT NULL,
+            monto REAL NOT NULL,
+            semana_inicio DATE NOT NULL,
+            semana_fin DATE NOT NULL,
+            estado TEXT NOT NULL DEFAULT 'pendiente' CHECK(estado IN ('pendiente', 'pagado', 'cancelado')),
+            registrado_por INTEGER NOT NULL,
+            fecha_pago DATETIME,
+            notas TEXT DEFAULT '',
+            FOREIGN KEY (barbero_id) REFERENCES usuarios(id),
+            FOREIGN KEY (registrado_por) REFERENCES usuarios(id)
+        )
+    `);
+} catch {
+    // Table already exists
+}
+
 module.exports = db;

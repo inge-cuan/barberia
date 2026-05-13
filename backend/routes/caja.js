@@ -114,7 +114,7 @@ router.post('/cerrar', requireAuth, (req, res) => {
         }
 
         // Calcular saldo esperado
-        const ventasEfectivo = db.prepare('SELECT SUM(total) as total FROM ventas WHERE metodo = "Efectivo" AND caja_id = ?').get(caja.id);
+        const ventasEfectivo = db.prepare("SELECT SUM(total) as total FROM ventas WHERE metodo = 'Efectivo' AND caja_id = ?").get(caja.id);
         const gastos = db.prepare('SELECT SUM(monto) as total FROM gastos_chicos WHERE caja_id = ?').get(caja.id);
 
         const saldoEsperado = caja.monto_inicial + (ventasEfectivo.total || 0) - (gastos.total || 0);

@@ -13,6 +13,9 @@ import RecepcionistaServicios from './components/RecepcionistaServicios';
 import RegistrarCita from './components/RegistrarCita';
 import GestionCitas from './components/GestionCitas';
 import Inventario from './components/Inventario';
+import AdminClientes from './components/AdminClientes';
+import Configuracion from './components/Configuracion';
+import ReportesPagos from './components/ReportesPagos';
 
 function AnimatedRoutes({ sidebarCollapsed, setSidebarCollapsed }) {
   const location = useLocation();
@@ -30,7 +33,10 @@ function AnimatedRoutes({ sidebarCollapsed, setSidebarCollapsed }) {
           <Route path="servicios" element={<RecepcionistaServicios />} />
           <Route path="registrar-cita" element={<RegistrarCita />} />
           <Route path="gestion-citas" element={<GestionCitas />} />
+          <Route path="clientes" element={<AdminClientes />} />
+          <Route path="configuracion" element={<Configuracion />} />
           <Route path="inventario" element={<Inventario />} />
+          <Route path="pagos" element={<ReportesPagos />} />
         </Route>
         <Route path="*" element={<Navigate to="/login" replace />} />
       </Routes>

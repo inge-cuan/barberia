@@ -1,4 +1,5 @@
 import { Link, useLocation, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import {
   Scissors,
   LayoutDashboard,
@@ -14,6 +15,9 @@ import {
   Moon,
   UserCog,
   Package,
+  Contact,
+  Settings,
+  Wallet,
 } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
 
@@ -39,7 +43,9 @@ const getLinks = (role) => [
     : []),
   { to: "/dashboard/inventario", label: "Inventario", icon: Package },
   { to: "/dashboard/servicios", label: "Servicios", icon: Scissors },
+  { to: "/dashboard/clientes", label: "Clientes", icon: Contact },
   { to: "/dashboard/corte", label: "Corte de Caja", icon: DollarSign },
+  { to: "/dashboard/pagos", label: "Pagos", icon: Wallet },
 
   ...(role === "admin"
     ? [
@@ -64,6 +70,21 @@ export default function Sidebar({
   const { theme, toggleTheme } = useTheme();
   const role = user?.rol || "recepcionista";
   const links = getLinks(role);
+  const [barberiaNombre, setBarberiaNombre] = useState("BarberPOS");
+
+  useEffect(() => {
+    fetch("http://localhost:3000/api/configuracion", {
+      headers: { Authorization: `Bearer ${localStorage.getItem("token")}` },
+    })
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.nombre_barberia) {
+          setBarberiaNombre(data.nombre_barberia);
+          document.title = data.nombre_barberia;
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleLogout = () => {
     localStorage.removeItem("token");
@@ -104,7 +125,7 @@ export default function Sidebar({
           <div className="sidebar-logo-icon">
             <Scissors size={18} color="#fff" />
           </div>
-          <span className="sidebar-logo-text">BarberPOS</span>
+          <span className="sidebar-logo-text">{barberiaNombre}</span>
         </div>
 
         <nav
@@ -188,6 +209,10 @@ export default function Sidebar({
           <div
             style={{ display: "flex", flexDirection: "column", gap: "0.35rem" }}
           >
+            <button onClick={() => navigate('/dashboard/configuracion')} title="Configuración">
+              <Settings size={16} />
+              {!collapsed && <span>Configuración</span>}
+            </button>
             <button
               onClick={toggleTheme}
               title={theme === "dark" ? "Modo claro" : "Modo oscuro"}

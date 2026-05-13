@@ -21,6 +21,8 @@ const adminRoutes = require('./routes/admin');
 const serviciosRoutes = require('./routes/servicios');
 const citasRoutes = require('./routes/citas');
 const inventarioRoutes = require('./routes/inventario');
+const clientesRoutes = require('./routes/clientes');
+const configuracionRoutes = require('./routes/configuracion');
 
 // Rutas base
 app.use('/api/auth', authRoutes);
@@ -31,6 +33,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/servicios', serviciosRoutes);
 app.use('/api/citas', citasRoutes);
 app.use('/api/inventario', inventarioRoutes);
+app.use('/api/clientes', clientesRoutes);
+app.use('/api/configuracion', configuracionRoutes);
 
 // Endpoint básico de health-check
 app.get('/', (req, res) => {

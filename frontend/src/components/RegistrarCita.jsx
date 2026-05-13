@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { toast } from "sonner";
 import { CalendarPlus, User, Scissors, Check, ChevronRight } from "lucide-react";
@@ -16,6 +16,13 @@ const steps = [
 export default function RegistrarCita() {
   const [catalogos, setCatalogos] = useState({ barberos: [], servicios: [] });
   const [clienteNombre, setClienteNombre] = useState("");
+  const [clienteId, setClienteId] = useState(null);
+  const [clienteSearchResults, setClienteSearchResults] = useState([]);
+  const [showClienteDropdown, setShowClienteDropdown] = useState(false);
+  const [searchingCliente, setSearchingCliente] = useState(false);
+  const clienteInputRef = useRef(null);
+  const dropdownRef = useRef(null);
+  const searchTimeoutRef = useRef(null);
   const [barberoId, setBarberoId] = useState(null);
   const [servicioId, setServicioId] = useState(null);
   const [selectedDate, setSelectedDate] = useState(null);
@@ -63,6 +70,66 @@ export default function RegistrarCita() {
     fetchCitasDelDia();
   }, [selectedDate, barberoId]);
 
+  const searchClientes = useCallback(async (q) => {
+    if (q.length < 4) {
+      setClienteSearchResults([]);
+      setShowClienteDropdown(false);
+      return;
+    }
+    setSearchingCliente(true);
+    try {
+      const token = localStorage.getItem("token");
+      const res = await fetch(`http://localhost:3000/api/clientes/search?q=${encodeURIComponent(q)}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setClienteSearchResults(data);
+        setShowClienteDropdown(data.length > 0);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSearchingCliente(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    if (clienteNombre.length >= 4) {
+      searchTimeoutRef.current = setTimeout(() => searchClientes(clienteNombre), 300);
+    } else {
+      setClienteSearchResults([]);
+      setShowClienteDropdown(false);
+    }
+    return () => {
+      if (searchTimeoutRef.current) clearTimeout(searchTimeoutRef.current);
+    };
+  }, [clienteNombre, searchClientes]);
+
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target) &&
+          clienteInputRef.current && !clienteInputRef.current.contains(e.target)) {
+        setShowClienteDropdown(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handleSelectCliente = (cl) => {
+    setClienteNombre(cl.nombre);
+    setClienteId(cl.id);
+    setShowClienteDropdown(false);
+    setClienteSearchResults([]);
+  };
+
+  const handleClienteChange = (val) => {
+    setClienteNombre(val);
+    if (clienteId) setClienteId(null);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (
@@ -78,6 +145,18 @@ export default function RegistrarCita() {
     setSaving(true);
     try {
       const token = localStorage.getItem("token");
+      let finalNombre = clienteNombre.trim();
+      if (!clienteId) {
+        const createRes = await fetch("http://localhost:3000/api/clientes", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ nombre: finalNombre }),
+        });
+        if (createRes.ok) {
+          const newCliente = await createRes.json();
+          setClienteId(newCliente.id);
+        }
+      }
       const res = await fetch("http://localhost:3000/api/citas", {
         method: "POST",
         headers: {
@@ -85,7 +164,7 @@ export default function RegistrarCita() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          cliente_nombre: clienteNombre,
+          cliente_nombre: finalNombre,
           barbero_id: barberoId,
           servicio_id: servicioId,
           fecha: selectedDate,
@@ -96,6 +175,7 @@ export default function RegistrarCita() {
       if (res.ok) {
         toast.success("Cita agendada con éxito");
         setClienteNombre("");
+        setClienteId(null);
         setBarberoId(null);
         setServicioId(null);
         setSelectedDate(null);
@@ -200,21 +280,27 @@ export default function RegistrarCita() {
                 color: "var(--text-main)", marginBottom: "0.4rem",
               }}>
                 Nombre del Cliente
+                {clienteId && (
+                  <span style={{ marginLeft: "0.5rem", fontSize: "0.7rem", color: "#16a34a", fontWeight: 500 }}>
+                    (seleccionado)
+                  </span>
+                )}
               </label>
               <div style={{ position: "relative" }}>
                 <User size={16} style={{
                   position: "absolute", left: "12px", top: "50%",
                   transform: "translateY(-50%)", color: "var(--text-muted)",
-                  pointerEvents: "none",
+                  pointerEvents: "none", zIndex: 1,
                 }} />
                 <input
                   required
+                  ref={clienteInputRef}
                   value={clienteNombre}
-                  onChange={(e) => setClienteNombre(e.target.value)}
+                  onChange={(e) => handleClienteChange(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && e.preventDefault()}
-                  placeholder="Ej. Juan Pérez"
+                  placeholder="Ej. Juan Pérez (escribe 4+ caracteres para buscar)"
                   style={{
-                    width: "100%", padding: "0.7rem 1rem 0.7rem 2.5rem",
+                    width: "100%", padding: "0.7rem 2.5rem 0.7rem 2.5rem",
                     fontSize: "0.95rem", color: "var(--text-main)",
                     border: "1px solid var(--border-color)",
                     borderRadius: "10px", background: "var(--bg-color)",
@@ -230,7 +316,68 @@ export default function RegistrarCita() {
                     e.target.style.boxShadow = "none";
                   }}
                 />
+                {searchingCliente && (
+                  <div style={{
+                    position: "absolute", right: "12px", top: "50%",
+                    transform: "translateY(-50%)",
+                    width: "16px", height: "16px",
+                    border: "2px solid var(--text-muted)",
+                    borderTopColor: "transparent",
+                    borderRadius: "50%",
+                    animation: "spin 0.6s linear infinite",
+                  }} />
+                )}
+                {showClienteDropdown && clienteSearchResults.length > 0 && (
+                  <motion.div
+                    ref={dropdownRef}
+                    initial={{ opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.15 }}
+                    style={{
+                      position: "absolute", top: "100%", left: 0, right: 0,
+                      marginTop: "4px", zIndex: 20,
+                      background: "var(--surface-color)",
+                      border: "1px solid var(--border-color)",
+                      borderRadius: "10px",
+                      boxShadow: "var(--shadow-elevated)",
+                      overflow: "hidden",
+                    }}
+                  >
+                    {clienteSearchResults.map((cl) => (
+                      <div
+                        key={cl.id}
+                        onClick={() => handleSelectCliente(cl)}
+                        style={{
+                          padding: "0.6rem 0.75rem",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          gap: "0.5rem",
+                          fontSize: "0.9rem",
+                          color: "var(--text-main)",
+                          borderBottom: "1px solid var(--border-color)",
+                          transition: "background 0.15s",
+                        }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = "rgba(111,78,55,0.08)"; }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+                      >
+                        <User size={14} color="var(--text-muted)" />
+                        <span style={{ fontWeight: 500 }}>{cl.nombre}</span>
+                        {cl.telefono && (
+                          <span style={{ marginLeft: "auto", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                            {cl.telefono}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                  </motion.div>
+                )}
               </div>
+              {clienteNombre.length >= 4 && clienteSearchResults.length === 0 && !searchingCliente && !clienteId && (
+                <div style={{ marginTop: "0.3rem", fontSize: "0.75rem", color: "var(--text-muted)" }}>
+                  No encontrado — se registrará automáticamente al agendar
+                </div>
+              )}
             </div>
 
             <div>

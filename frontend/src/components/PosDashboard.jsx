@@ -23,6 +23,21 @@ export default function PosDashboard() {
   const [loadingCobro, setLoadingCobro] = useState(false);
   const [ticketVentaId, setTicketVentaId] = useState(null);
   const [ticketImprimir, setTicketImprimir] = useState(null);
+  const [settings, setSettings] = useState({ nombre_barberia: 'BARBERÍA', direccion: 'Calle Principal #123', telefono: '555-0123' });
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    fetch('http://localhost:3000/api/configuracion', {
+      headers: { Authorization: `Bearer ${token}` },
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.nombre_barberia || data.direccion || data.telefono) {
+          setSettings(prev => ({ ...prev, ...data }));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (citaData?.productos) {
@@ -271,9 +286,10 @@ export default function PosDashboard() {
       {ticketImprimir && (
         <div id="print-ticket" style={{ display: 'none' }}>
           <div style={{ textAlign: 'center', marginBottom: '12px', paddingBottom: '10px', borderBottom: '2px solid #000' }}>
-            <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 2px', letterSpacing: '1px', fontFamily: 'serif' }}>BARBERÍA</h1>
-            <p style={{ fontSize: '10px', margin: '2px 0', color: '#555' }}>Corte y Estilo Profesional</p>
-            <p style={{ fontSize: '9px', margin: '2px 0', color: '#777' }}>Calle Principal #123 | Tel: 555-0123</p>
+            {settings.logo_url && <img src={settings.logo_url} alt="Logo" style={{ maxWidth: '80px', maxHeight: '60px', objectFit: 'contain', marginBottom: '6px' }} />}
+            <h1 style={{ fontSize: '20px', fontWeight: 800, margin: '0 0 2px', letterSpacing: '1px', fontFamily: 'serif' }}>{settings.nombre_barberia || 'BARBERÍA'}</h1>
+            {settings.slogan && <p style={{ fontSize: '10px', margin: '2px 0', color: '#555' }}>{settings.slogan}</p>}
+            <p style={{ fontSize: '9px', margin: '2px 0', color: '#777' }}>{settings.direccion}{settings.telefono ? ` | Tel: ${settings.telefono}` : ''}</p>
           </div>
 
           <div style={{ fontSize: '10px', marginBottom: '8px', color: '#333' }}>
